@@ -59,12 +59,19 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ComplexFtpCommand.cs" />
+    <Compile Include="ComplexResult.cs" />
+    <Compile Include="ComplexSocket.cs" />
+    <Compile Include="Enums.cs" />
+    <Compile Include="Extensions\ComplexFtpCommandExtensions.cs" />
+    <Compile Include="Extensions\ComplexSocketExtensions.cs" />
+    <Compile Include="Extensions\EndPointExtensions.cs" />
     <Compile Include="FtpClient.cs" />
-    <Compile Include="FtpCommandCompletedEventArgs.cs" />
+    <Compile Include="Extensions\FtpClientExtensions.cs" />
+    <Compile Include="EventArgs\FtpCommandCompletedEventArgs.cs" />
     <Compile Include="FtpClientBase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SocketAsyncEventArgsExtensions.cs" />
-    <Compile Include="SocketCompletedEventArgs.cs" />
+    <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
+    <Compile Include="EventArgs\SocketCompletedEventArgs.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="ClientAccessPolicy.xml" />

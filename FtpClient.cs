@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using sharpLightFtp.EventArgs;
+using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
@@ -70,73 +70,80 @@ namespace sharpLightFtp
 		public string Username { get; set; }
 		public string Password { get; set; }
 
-		public event Action<FtpCommandCompletedEventArgs> TestConnectionCompleted = args => args.DisposeSocket();
+		public event EventHandler<FtpCommandCompletedEventArgs> TestConnectionCompleted = (sender, args) => args.DisposeSocket();
 
-		private void RaiseTestConnectionCompleted(FtpCommandCompletedEventArgs ftpCommandCompletedEventArgs)
+		private void RaiseTestConnectionCompleted(object sender, FtpCommandCompletedEventArgs ftpCommandCompletedEventArgs)
 		{
+			Contract.Requires(ftpCommandCompletedEventArgs != null);
+
 			var handler = this.TestConnectionCompleted;
 			if (handler != null)
 			{
-				handler.Invoke(ftpCommandCompletedEventArgs);
+				handler.Invoke(sender, ftpCommandCompletedEventArgs);
 			}
 		}
 
 		public void TestConnectionAsync()
 		{
-			Contract.Requires(!string.IsNullOrWhiteSpace(this.Server));
+			var complexSocket = this.GetComplexSocket();
+			var socket = complexSocket.Socket;
 
-			var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			var host = this.Server;
-			var port = this.Port;
-			var endPoint = new DnsEndPoint(host, port);
-			var socketAsyncEventArgs = GetSocketAsyncEventArgs(endPoint);
-			socketAsyncEventArgs.Completed += (sender, args0) =>
+			var queue = new Queue<Func<SocketAsyncEventArgs>>();
 			{
-				var queue = new Queue<Func<SocketAsyncEventArgs>>();
-				{
-					queue.Enqueue(() => this.SendUsername(socket, endPoint, this.Username));
-					queue.Enqueue(() => this.SendPassword(socket, endPoint, this.Password));
-				}
-
-				Action<SocketAsyncEventArgs> finalAction = args =>
-				{
-					if (args == null)
-					{
-						
-					}
-					var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
-					{
-						Socket = socket,
-						Exception = args.GetException(),
-						Success = args.IsSuccess()
-					};
-					this.RaiseTestConnectionCompleted(ftpCommandCompletedEventArgs);
-				};
-				ExecuteQueue(queue, finalAction);
-			};
-			socket.ConnectAsync(socketAsyncEventArgs);
-		}
-
-		private static void ExecuteQueue(Queue<Func<SocketAsyncEventArgs>> queue, Action<SocketAsyncEventArgs> finalAction)
-		{
-			Contract.Requires(queue.Any());
-
-			SocketAsyncEventArgs socketAsyncEventArgs = null;
-			while (queue.Any())
-			{
-				var predicate = queue.Dequeue();
-				socketAsyncEventArgs = predicate.Invoke();
-				var isSuccess = socketAsyncEventArgs.IsSuccess();
-				if (!isSuccess)
-				{
-					finalAction.Invoke(socketAsyncEventArgs);
-					return;
-				}
+				queue.Enqueue(() => complexSocket.Connect(this.Encoding));
+				queue.Enqueue(() => complexSocket.Authenticate(this.Username, this.Password, this.Encoding));
 			}
 
-			Contract.Assert(socketAsyncEventArgs != null);
+			Action<SocketAsyncEventArgs> finalAction = asyncEventArgs =>
+			{
+				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
+				{
+					Socket = socket,
+					Exception = asyncEventArgs.GetException(),
+					Success = asyncEventArgs.IsSuccess()
+				};
+				this.RaiseTestConnectionCompleted(this, ftpCommandCompletedEventArgs);
+			};
+			ExecuteQueueAsync(queue, finalAction);
+		}
 
-			finalAction.Invoke(socketAsyncEventArgs);
+		public event EventHandler<FtpCommandCompletedEventArgs> GetFeaturesCompleted = (sender, args) => args.DisposeSocket();
+
+		public void RaiseGetFeaturesCompleted(object sender, FtpCommandCompletedEventArgs ftpCommandCompletedEventArgs)
+		{
+			Contract.Requires(ftpCommandCompletedEventArgs != null);
+
+			var handler = this.GetFeaturesCompleted;
+			if (handler != null)
+			{
+				handler.Invoke(sender, ftpCommandCompletedEventArgs);
+			}
+		}
+
+		public void GetFeaturesAsync()
+		{
+			var complexSocket = this.GetComplexSocket();
+			var endPoint = complexSocket.EndPoint;
+			var socket = complexSocket.Socket;
+
+			var queue = new Queue<Func<SocketAsyncEventArgs>>();
+			{
+				queue.Enqueue(() => complexSocket.Connect(this.Encoding));
+				queue.Enqueue(() => complexSocket.Authenticate(this.Username, this.Password, this.Encoding));
+				queue.Enqueue(() => complexSocket.SendFeatures(this.Encoding));
+			}
+
+			Action<SocketAsyncEventArgs> finalAction = asyncEventArgs =>
+			{
+				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
+				{
+					Socket = socket,
+					Exception = asyncEventArgs.GetException(),
+					Success = asyncEventArgs.IsSuccess()
+				};
+				this.RaiseGetFeaturesCompleted(this, ftpCommandCompletedEventArgs);
+			};
+			ExecuteQueueAsync(queue, finalAction);
 		}
 	}
 }

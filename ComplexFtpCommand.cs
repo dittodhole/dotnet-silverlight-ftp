@@ -1,23 +1,59 @@
 ﻿using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
 namespace sharpLightFtp
 {
-	internal class ComplexFtpCommand
+	internal sealed class ComplexFtpCommand
 	{
-		internal string Command;
-		internal Encoding Encoding;
-		internal EndPoint EndPoint;
-		internal Socket Socket;
+		private readonly ComplexSocket _complexSocket;
+		private readonly Encoding _encoding;
 
-		internal void Validate()
+		internal string[] Commands;
+
+		internal ComplexFtpCommand(ComplexSocket complexSocket, Encoding encoding)
 		{
-			Contract.Assert(!string.IsNullOrWhiteSpace(this.Command));
-			Contract.Assert(this.Encoding != null);
-			Contract.Assert(this.EndPoint != null);
-			Contract.Assert(this.Socket != null);
+			Contract.Requires(complexSocket != null);
+			Contract.Requires(encoding != null);
+
+			this._complexSocket = complexSocket;
+			this._encoding = encoding;
+		}
+
+		internal ComplexFtpCommand(Socket socket, EndPoint endPoint, Encoding encoding)
+			: this(new ComplexSocket(socket, endPoint), encoding) {}
+
+		internal ComplexSocket ComplexSocket
+		{
+			get
+			{
+				return this._complexSocket;
+			}
+		}
+
+		internal string Command
+		{
+			get
+			{
+				return this.Commands.SingleOrDefault();
+			}
+			set
+			{
+				this.Commands = new[]
+				{
+					value
+				};
+			}
+		}
+
+		public Encoding Encoding
+		{
+			get
+			{
+				return this._encoding;
+			}
 		}
 	}
 }

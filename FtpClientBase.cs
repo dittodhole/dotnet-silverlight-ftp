@@ -1,8 +1,11 @@
-﻿using System.Diagnostics.Contracts;
-using System.Net;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
@@ -10,104 +13,36 @@ namespace sharpLightFtp
 	{
 		public Encoding Encoding { get; set; }
 
-		protected SocketAsyncEventArgs SendUsername(Socket socket, EndPoint endPoint, string username)
+		protected static void ExecuteQueueAsync(Queue<Func<SocketAsyncEventArgs>> queue, Action<SocketAsyncEventArgs> finalAction)
 		{
-			Contract.Requires(socket != null);
-			Contract.Requires(endPoint != null);
+			Contract.Requires(queue != null);
+			Contract.Requires(queue.Any());
+			Contract.Requires(finalAction != null);
+			ThreadPool.QueueUserWorkItem(callBack => ExecuteQueue(queue, finalAction));
+		}
 
-			SocketAsyncEventArgs socketAsyncEventArgs;
+		private static void ExecuteQueue(Queue<Func<SocketAsyncEventArgs>> queue, Action<SocketAsyncEventArgs> finalAction)
+		{
+			Contract.Requires(queue != null);
+			Contract.Requires(queue.Any());
+			Contract.Requires(finalAction != null);
 
-			if (string.IsNullOrWhiteSpace(username))
+			SocketAsyncEventArgs socketAsyncEventArgs = null;
+			while (queue.Any())
 			{
-				socketAsyncEventArgs = GetSuccessSocketAsyncEventArgs(endPoint);
-			}
-			else
-			{
-				var complexCommand = new ComplexFtpCommand
+				var predicate = queue.Dequeue();
+				socketAsyncEventArgs = predicate.Invoke();
+				var isSuccess = socketAsyncEventArgs.IsSuccess();
+				if (!isSuccess)
 				{
-					Command = string.Format("USER {0}", username),
-					Encoding = this.Encoding,
-					EndPoint = endPoint,
-					Socket = socket
-				};
-				socketAsyncEventArgs = SendCommand(complexCommand);
+					finalAction.Invoke(socketAsyncEventArgs);
+					return;
+				}
 			}
 
-			return socketAsyncEventArgs;
-		}
+			Contract.Assert(socketAsyncEventArgs != null);
 
-		protected SocketAsyncEventArgs SendPassword(Socket socket, EndPoint endPoint, string password)
-		{
-			Contract.Requires(socket != null);
-			Contract.Requires(endPoint != null);
-
-			SocketAsyncEventArgs socketAsyncEventArgs;
-
-			if (string.IsNullOrWhiteSpace(password))
-			{
-				socketAsyncEventArgs = GetSuccessSocketAsyncEventArgs(endPoint);
-			}
-			else
-			{
-				var complexFtpCommand = new ComplexFtpCommand
-				{
-					Command = string.Format("PASS {0}", password),
-					Encoding = this.Encoding,
-					EndPoint = endPoint,
-					Socket = socket
-				};
-				socketAsyncEventArgs = SendCommand(complexFtpCommand);
-			}
-
-			return socketAsyncEventArgs;
-		}
-
-		private static SocketAsyncEventArgs SendCommand(ComplexFtpCommand complexFtpCommand)
-		{
-			Contract.Requires(complexFtpCommand != null);
-
-			complexFtpCommand.Validate();
-
-			var encoding = complexFtpCommand.Encoding;
-			var command = complexFtpCommand.Command;
-			var endPoint = complexFtpCommand.EndPoint;
-			var socket = complexFtpCommand.Socket;
-
-			var commandBuffer = encoding.GetBytes(command);
-
-			var mutex = new AutoResetEvent(false);
-
-			var socketAsyncEventArgs = GetSocketAsyncEventArgs(endPoint);
-			socketAsyncEventArgs.SetBuffer(commandBuffer, 0, commandBuffer.Length);
-			socketAsyncEventArgs.Completed += (sender, e) => mutex.Set();
-			socket.SendAsync(socketAsyncEventArgs);
-
-			mutex.WaitOne();
-
-			return socketAsyncEventArgs;
-		}
-
-		private static SocketAsyncEventArgs GetSuccessSocketAsyncEventArgs(EndPoint endPoint)
-		{
-			Contract.Requires(endPoint != null);
-
-			var socketAsyncEventArgs = GetSocketAsyncEventArgs(endPoint);
-			socketAsyncEventArgs.SocketError = SocketError.Success;
-
-			return socketAsyncEventArgs;
-		}
-
-		protected static SocketAsyncEventArgs GetSocketAsyncEventArgs(EndPoint endPoint)
-		{
-			Contract.Requires(endPoint != null);
-
-			var socketAsyncEventArgs = new SocketAsyncEventArgs
-			{
-				RemoteEndPoint = endPoint,
-				SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http
-			};
-
-			return socketAsyncEventArgs;
+			finalAction.Invoke(socketAsyncEventArgs);
 		}
 	}
 }
