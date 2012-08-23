@@ -27,7 +27,7 @@ namespace sharpLightFtp.Extensions
 				sendSocketEventArgs.AutoResetEvent.WaitOne();
 			}
 
-			var receiveSocketAsyncEventArgs = complexSocket.Receive(sendSocketEventArgs);
+			var receiveSocketAsyncEventArgs = complexSocket.Receive();
 
 			var complexResult = receiveSocketAsyncEventArgs.GetComplexResult(encoding);
 			complexResult.SocketAsyncEventArgs = receiveSocketAsyncEventArgs;

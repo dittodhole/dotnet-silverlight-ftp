@@ -13,17 +13,17 @@ namespace sharpLightFtp.Extensions
 			var socket = complexSocket.Socket;
 			var endPoint = complexSocket.EndPoint;
 
-			var socketEventArgs = endPoint.GetSocketEventArgs();
-			var async = socket.ConnectAsync(socketEventArgs);
+			var sendSocketEventArgs = endPoint.GetSocketEventArgs();
+			var async = socket.ConnectAsync(sendSocketEventArgs);
 			if (async)
 			{
-				socketEventArgs.AutoResetEvent.WaitOne();
+				sendSocketEventArgs.AutoResetEvent.WaitOne();
 			}
 
-			socketEventArgs = complexSocket.Receive(socketEventArgs);
+			var receiveSocketEventArgs = complexSocket.Receive();
 
-			var complexResult = socketEventArgs.GetComplexResult(encoding);
-			complexResult.SocketAsyncEventArgs = socketEventArgs;
+			var complexResult = receiveSocketEventArgs.GetComplexResult(encoding);
+			complexResult.SocketAsyncEventArgs = receiveSocketEventArgs;
 
 			return complexResult;
 		}
@@ -71,7 +71,7 @@ namespace sharpLightFtp.Extensions
 			return complexResult;
 		}
 
-		internal static SocketEventArgs Receive(this ComplexSocket complexSocket, SocketEventArgs sendSocketEventArgs)
+		internal static SocketEventArgs Receive(this ComplexSocket complexSocket)
 		{
 			Contract.Requires(complexSocket != null);
 

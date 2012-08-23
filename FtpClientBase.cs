@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
