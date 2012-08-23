@@ -1,13 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
 namespace sharpLightFtp
 {
-	public class FtpClient
+	public sealed class FtpClient : FtpClientBase
 	{
+		private int _port;
+
 		public FtpClient(string username, string password, string server, int port)
 			: this(username, password, server)
 		{
@@ -47,59 +51,28 @@ namespace sharpLightFtp
 		}
 
 		public string Server { get; set; }
-		public int Port { get; set; }
-		public string Username { get; set; }
-		public string Password { get; set; }
-		public Encoding Encoding { get; set; }
 
-		/*
-		public event Action<string, bool> DirectoryExistsCompleted;
-
-		private void RaiseDirectoryExistsCompleted(string path, bool directoryExists)
+		public int Port
 		{
-			var handler = this.DirectoryExistsCompleted;
-			if (handler != null)
+			get
 			{
-				handler.Invoke(path, directoryExists);
+				return this._port;
+			}
+			set
+			{
+				Contract.Requires(0 <= value);
+				Contract.Requires(value <= 65535);
+
+				this._port = value;
 			}
 		}
 
-		public void DirectoryExistsAsync(string path)
-		{
-			var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			var remoteEndPoint = new DnsEndPoint(this.Server, this.Port);
-			var socketAsyncEventArgs = new SocketAsyncEventArgs
-			{
-				RemoteEndPoint = remoteEndPoint
-			};
-			socketAsyncEventArgs.Completed += (sender, eventArgs) =>
-			{
-				var success = eventArgs.SocketError == SocketError.Success;
-				if (!success)
-				{
-					this.RaiseDirectoryExistsCompleted(path, false);
-				}
+		public string Username { get; set; }
+		public string Password { get; set; }
 
-				this.SendUsername(socket, this.Username, previousResult =>
-				{
-					if (!previousResult)
-					{
-						this.RaiseDirectoryExistsCompleted(path, false);
-					}
+		public event Action<FtpCommandCompletedEventArgs> TestConnectionCompleted = args => args.DisposeSocket();
 
-					this.SendPassword(socket, this.Password, result =>
-					{
-						this.RaiseDirectoryExistsCompleted(path, result);
-					});
-				});
-			};
-			socket.ConnectAsync(socketAsyncEventArgs);
-		}
-		*/
-
-		public event Action<FtpCommandCompletedEventArgs> TestConnectionCompleted;
-
-		public void RaiseTestConnectionCompleted(FtpCommandCompletedEventArgs ftpCommandCompletedEventArgs)
+		private void RaiseTestConnectionCompleted(FtpCommandCompletedEventArgs ftpCommandCompletedEventArgs)
 		{
 			var handler = this.TestConnectionCompleted;
 			if (handler != null)
@@ -113,106 +86,57 @@ namespace sharpLightFtp
 			Contract.Requires(!string.IsNullOrWhiteSpace(this.Server));
 
 			var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			var host = string.Concat(Uri.UriSchemeFtp, Uri.SchemeDelimiter, this.Server);
-			var remoteEndPoint = new DnsEndPoint(host, this.Port);
-			var socketAsyncEventArgs = new SocketAsyncEventArgs
+			var host = this.Server;
+			var port = this.Port;
+			var endPoint = new DnsEndPoint(host, port);
+			var socketAsyncEventArgs = GetSocketAsyncEventArgs(endPoint);
+			socketAsyncEventArgs.Completed += (sender, args0) =>
 			{
-				RemoteEndPoint = remoteEndPoint
-			};
-			socketAsyncEventArgs.Completed += (sender, eventArgs) =>
-			{
-				if (!eventArgs.IsSuccess())
+				var queue = new Queue<Func<SocketAsyncEventArgs>>();
 				{
+					queue.Enqueue(() => this.SendUsername(socket, endPoint, this.Username));
+					queue.Enqueue(() => this.SendPassword(socket, endPoint, this.Password));
+				}
+
+				Action<SocketAsyncEventArgs> finalAction = args =>
+				{
+					if (args == null)
+					{
+						
+					}
 					var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
 					{
-						Exception = eventArgs.GetException(),
-						Success = eventArgs.IsSuccess()
+						Socket = socket,
+						Exception = args.GetException(),
+						Success = args.IsSuccess()
 					};
 					this.RaiseTestConnectionCompleted(ftpCommandCompletedEventArgs);
-					return;
-				}
-				this.SendUsername(socket, this.Username, e0 =>
-				{
-					if (!e0.IsSuccess())
-					{
-						var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
-						{
-							Exception = eventArgs.GetException(),
-							Success = false
-						};
-						this.RaiseTestConnectionCompleted(ftpCommandCompletedEventArgs);
-						return;
-					}
-
-					this.SendPassword(socket, this.Password, e1 =>
-					{
-						var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs()
-						{
-							Exception = e1.GetException(),
-							Success = e1.IsSuccess()
-						};
-						this.RaiseTestConnectionCompleted(ftpCommandCompletedEventArgs);
-					});
-				});
+				};
+				ExecuteQueue(queue, finalAction);
 			};
 			socket.ConnectAsync(socketAsyncEventArgs);
 		}
 
-		private void SendUsername(Socket socket, string username, Action<SocketAsyncEventArgs> nextCommandFunc)
+		private static void ExecuteQueue(Queue<Func<SocketAsyncEventArgs>> queue, Action<SocketAsyncEventArgs> finalAction)
 		{
-			Contract.Requires(socket != null);
+			Contract.Requires(queue.Any());
 
-			if (string.IsNullOrWhiteSpace(username))
+			SocketAsyncEventArgs socketAsyncEventArgs = null;
+			while (queue.Any())
 			{
-				if (nextCommandFunc != null)
+				var predicate = queue.Dequeue();
+				socketAsyncEventArgs = predicate.Invoke();
+				var isSuccess = socketAsyncEventArgs.IsSuccess();
+				if (!isSuccess)
 				{
-					var socketAsyncEventArgs = new SocketAsyncEventArgs();
-					nextCommandFunc.Invoke(socketAsyncEventArgs);
-				}
-				return;
-			}
-
-			var command = string.Format("username: {0}", username);
-			this.SendCommand(socket, command, nextCommandFunc);
-		}
-
-		private void SendPassword(Socket socket, string password, Action<SocketAsyncEventArgs> nextCommandFunc)
-		{
-			Contract.Requires(socket != null);
-
-			if (string.IsNullOrWhiteSpace(password))
-			{
-				if (nextCommandFunc != null)
-				{
-					var socketAsyncEventArgs = new SocketAsyncEventArgs();
-					nextCommandFunc.Invoke(socketAsyncEventArgs);
-				}
-				return;
-			}
-
-			var command = string.Format("password: {0}", password);
-			this.SendCommand(socket, command, nextCommandFunc);
-		}
-
-		private void SendCommand(Socket socket, string command, Action<SocketAsyncEventArgs> nextCommandFunc)
-		{
-			Contract.Requires(socket != null);
-			Contract.Requires(!string.IsNullOrWhiteSpace(command));
-
-			var commandBuffer = this.Encoding.GetBytes(command);
-
-			var socketAsyncEventArgs = new SocketAsyncEventArgs();
-			socketAsyncEventArgs.SetBuffer(commandBuffer, 0, commandBuffer.Length);
-			socketAsyncEventArgs.Completed += (sender, e) =>
-			{
-				if (nextCommandFunc == null)
-				{
+					finalAction.Invoke(socketAsyncEventArgs);
 					return;
 				}
+			}
 
-				nextCommandFunc.Invoke(e);
-			};
-			socket.SendAsync(socketAsyncEventArgs);
+			Contract.Assert(socketAsyncEventArgs != null);
+
+			finalAction.Invoke(socketAsyncEventArgs);
 		}
 	}
 }
