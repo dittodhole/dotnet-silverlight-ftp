@@ -68,7 +68,6 @@
     <Compile Include="Extensions\EndPointExtensions.cs" />
     <Compile Include="FtpClient.cs" />
     <Compile Include="Extensions\FtpClientExtensions.cs" />
-    <Compile Include="EventArgs\FtpCommandCompletedEventArgs.cs" />
     <Compile Include="FtpClientBase.cs" />
     <Compile Include="FtpException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

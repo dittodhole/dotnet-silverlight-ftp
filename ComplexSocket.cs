@@ -1,10 +1,11 @@
-﻿using System.Diagnostics.Contracts;
+﻿using System;
+using System.Diagnostics.Contracts;
 using System.Net;
 using System.Net.Sockets;
 
 namespace sharpLightFtp
 {
-	internal sealed class ComplexSocket
+	internal sealed class ComplexSocket : IDisposable
 	{
 		private readonly EndPoint _endPoint;
 		private readonly Socket _socket;
@@ -32,6 +33,11 @@ namespace sharpLightFtp
 			{
 				return this._endPoint;
 			}
+		}
+
+		public void Dispose()
+		{
+			this.Socket.Dispose();
 		}
 	}
 }

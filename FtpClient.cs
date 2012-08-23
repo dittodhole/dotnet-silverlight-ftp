@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using System.Text;
-using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
 	public sealed class FtpClient : FtpClientBase
 	{
+		private FtpFeatures _features = FtpFeatures.EMPTY;
 		private int _port;
 
 		public FtpClient(string username, string password, string server, int port)
@@ -69,79 +70,78 @@ namespace sharpLightFtp
 		public string Username { get; set; }
 		public string Password { get; set; }
 
-		public event EventHandler<FtpCommandCompletedEventArgs> TestConnectionCompleted = (sender, args) => args.DisposeSocket();
-
-		private void RaiseTestConnectionCompleted(object sender, FtpCommandCompletedEventArgs ftpCommandCompletedEventArgs)
+		public bool TestConnection()
 		{
-			Contract.Requires(ftpCommandCompletedEventArgs != null);
-
-			var handler = this.TestConnectionCompleted;
-			if (handler != null)
+			using (var controlComplexSocket = this.GetComplexSocket())
 			{
-				handler.Invoke(sender, ftpCommandCompletedEventArgs);
-			}
-		}
-
-		public void TestConnectionAsync()
-		{
-			var controlComplexSocket = this.GetComplexSocket();
-			var controlSocket = controlComplexSocket.Socket;
-
-			var queue = new Queue<Func<ComplexResult>>();
-			{
-				queue.Enqueue(() => controlComplexSocket.Connect(this.Encoding));
-				queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
-			}
-
-			Action<ComplexResult> finalAction = complexResult =>
-			{
-				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
+				var queue = new Queue<Func<bool>>();
 				{
-					Socket = controlSocket,
-					Exception = complexResult.SocketAsyncEventArgs.GetException(),
-					Success = complexResult.SocketAsyncEventArgs.IsSuccess()
-				};
-				this.RaiseTestConnectionCompleted(this, ftpCommandCompletedEventArgs);
-			};
-			ExecuteQueueAsync(queue, finalAction);
-		}
+					queue.Enqueue(() => controlComplexSocket.Connect(this.Encoding));
+					queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
+				}
 
-		public event EventHandler<FtpCommandCompletedEventArgs> GetFeaturesCompleted = (sender, args) => args.DisposeSocket();
-
-		public void RaiseGetFeaturesCompleted(object sender, FtpCommandCompletedEventArgs ftpCommandCompletedEventArgs)
-		{
-			Contract.Requires(ftpCommandCompletedEventArgs != null);
-
-			var handler = this.GetFeaturesCompleted;
-			if (handler != null)
-			{
-				handler.Invoke(sender, ftpCommandCompletedEventArgs);
+				return ExecuteQueue(queue);
 			}
 		}
 
-		public void GetFeaturesAsync()
+		public bool GetFeatures()
 		{
-			var controlComplexSocket = this.GetComplexSocket();
-			var controlSocket = controlComplexSocket.Socket;
-
-			var queue = new Queue<Func<ComplexResult>>();
+			using (var controlComplexSocket = this.GetComplexSocket())
 			{
-				queue.Enqueue(() => controlComplexSocket.Connect(this.Encoding));
-				queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
-				queue.Enqueue(() => controlComplexSocket.SendFeatures(this.Encoding));
-			}
-
-			Action<ComplexResult> finalAction = asyncEventArgs =>
-			{
-				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
+				var queue = new Queue<Func<bool>>();
 				{
-					Socket = controlSocket,
-					Exception = asyncEventArgs.SocketAsyncEventArgs.GetException(),
-					Success = asyncEventArgs.SocketAsyncEventArgs.IsSuccess()
-				};
-				this.RaiseGetFeaturesCompleted(this, ftpCommandCompletedEventArgs);
-			};
-			ExecuteQueueAsync(queue, finalAction);
+					queue.Enqueue(() => controlComplexSocket.Connect(this.Encoding));
+					queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
+					queue.Enqueue(() => this.EnsureFeatures(controlComplexSocket));
+				}
+
+				return ExecuteQueue(queue);
+			}
+		}
+
+		private bool EnsureFeatures(ComplexSocket complexSocket)
+		{
+			Contract.Requires(complexSocket != null);
+
+			if (this._features
+			    != FtpFeatures.EMPTY)
+			{
+				return true;
+			}
+
+			var complexResult = complexSocket.GetFeatures(this.Encoding);
+			if (!complexResult.Success)
+			{
+				return false;
+			}
+
+			this._features |= FtpFeatures.NONE;
+
+			var enumType = typeof (FtpFeatures);
+			var complexEnums = (from name in Enum.GetNames(enumType)
+			                    let enumName = name.ToUpper()
+			                    let enumValue = Enum.Parse(enumType, enumName, true)
+			                    select new
+			                    {
+				                    EnumName = enumName,
+				                    EnumValue = (FtpFeatures) enumValue
+			                    }).ToList();
+			foreach (var message in complexResult.Messages)
+			{
+				var upperMessage = message.ToUpper();
+				foreach (var complexEnum in complexEnums)
+				{
+					var enumName = complexEnum.EnumName;
+					if (!upperMessage.Contains(enumName))
+					{
+						continue;
+					}
+					var enumValue = complexEnum.EnumValue;
+					this._features |= enumValue;
+				}
+			}
+
+			return true;
 		}
 	}
 }

@@ -9,7 +9,7 @@ namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexSocketExtensions
 	{
-		internal static ComplexResult Connect(this ComplexSocket complexSocket, Encoding encoding)
+		internal static bool Connect(this ComplexSocket complexSocket, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 
@@ -24,11 +24,12 @@ namespace sharpLightFtp.Extensions
 			}
 
 			var complexResult = complexSocket.Receive(encoding);
+			var success = complexResult.Success;
 
-			return complexResult;
+			return success;
 		}
 
-		internal static ComplexResult Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)
+		internal static bool Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(encoding != null);
@@ -40,7 +41,7 @@ namespace sharpLightFtp.Extensions
 			var complexResult = complexFtpCommand.SendCommand();
 			if (!complexResult.Success)
 			{
-				throw new FtpException(complexResult.ResponseMessage);
+				return false;
 			}
 			if (complexResult.FtpResponseType == FtpResponseType.PositiveIntermediate)
 			{
@@ -49,16 +50,14 @@ namespace sharpLightFtp.Extensions
 					Command = string.Format("PASS {0}", password)
 				};
 				complexResult = complexFtpCommand.SendCommand();
-				if (!complexResult.Success)
-				{
-					throw new FtpException(complexResult.ResponseMessage);
-				}
 			}
 
-			return complexResult;
+			var success = complexResult.Success;
+
+			return success;
 		}
 
-		internal static ComplexResult SendFeatures(this ComplexSocket complexSocket, Encoding encoding)
+		internal static ComplexResult GetFeatures(this ComplexSocket complexSocket, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 

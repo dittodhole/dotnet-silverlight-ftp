@@ -1,11 +1,9 @@
-﻿using System;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Threading;
 
 namespace sharpLightFtp.EventArgs
 {
-	public sealed class SocketEventArgs : SocketAsyncEventArgs,
-	                                      IDisposable
+	public sealed class SocketEventArgs : SocketAsyncEventArgs
 	{
 		private readonly AutoResetEvent _autoResetEvent = new AutoResetEvent(false);
 
@@ -16,18 +14,5 @@ namespace sharpLightFtp.EventArgs
 				return this._autoResetEvent;
 			}
 		}
-
-		#region IDisposable Members
-
-		void IDisposable.Dispose()
-		{
-			if (this._autoResetEvent != null)
-			{
-				this._autoResetEvent.Dispose();
-			}
-			this.Dispose();
-		}
-
-		#endregion
 	}
 }
