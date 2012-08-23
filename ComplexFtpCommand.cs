@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.Contracts;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -11,7 +10,7 @@ namespace sharpLightFtp
 		private readonly ComplexSocket _complexSocket;
 		private readonly Encoding _encoding;
 
-		internal string[] Commands;
+		internal string Command;
 
 		internal ComplexFtpCommand(ComplexSocket complexSocket, Encoding encoding)
 		{
@@ -30,21 +29,6 @@ namespace sharpLightFtp
 			get
 			{
 				return this._complexSocket;
-			}
-		}
-
-		internal string Command
-		{
-			get
-			{
-				return this.Commands.SingleOrDefault();
-			}
-			set
-			{
-				this.Commands = new[]
-				{
-					value
-				};
 			}
 		}
 

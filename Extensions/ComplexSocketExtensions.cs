@@ -1,78 +1,64 @@
 ﻿using System.Diagnostics.Contracts;
-using System.Net.Sockets;
 using System.Text;
-using System.Threading;
+using sharpLightFtp.EventArgs;
 
 namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexSocketExtensions
 	{
-		internal static SocketAsyncEventArgs Connect(this ComplexSocket complexSocket, Encoding encoding)
+		internal static ComplexResult Connect(this ComplexSocket complexSocket, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 
 			var socket = complexSocket.Socket;
 			var endPoint = complexSocket.EndPoint;
 
-			var mutex = new AutoResetEvent(false);
+			var socketEventArgs = endPoint.GetSocketEventArgs();
+			var async = socket.ConnectAsync(socketEventArgs);
+			if (async)
+			{
+				socketEventArgs.AutoResetEvent.WaitOne();
+			}
 
-			var asyncEventArgs = endPoint.GetSocketAsyncEventArgs();
-			asyncEventArgs.Completed += (sender, args) => mutex.Set();
-			socket.ConnectAsync(asyncEventArgs);
+			socketEventArgs = complexSocket.Receive(socketEventArgs);
 
-			mutex.WaitOne();
+			var complexResult = socketEventArgs.GetComplexResult(encoding);
+			complexResult.SocketAsyncEventArgs = socketEventArgs;
 
-			asyncEventArgs = complexSocket.Receive();
-
-			var complexResult = asyncEventArgs.GetComplexResult(encoding);
-
-			return asyncEventArgs;
+			return complexResult;
 		}
 
-		internal static SocketAsyncEventArgs Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)
+		internal static ComplexResult Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(encoding != null);
 
-			var endPoint = complexSocket.EndPoint;
-
-			if (string.IsNullOrWhiteSpace(username))
+			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
 			{
-				return endPoint.GetSuccessSocketAsyncEventArgs();
+				Command = string.Format("USER {0}", username)
+			};
+			var complexResult = complexFtpCommand.SendCommand();
+			if (!complexResult.Success)
+			{
+				throw new FtpException(complexResult.ResponseMessage);
 			}
-
-			var complexFtpCommand = complexSocket.GetAuthenticateCommand(username, password, encoding);
-			var socketAsyncEventArgs = complexFtpCommand.SendCommand();
-
-			return socketAsyncEventArgs;
-		}
-
-		internal static ComplexFtpCommand GetAuthenticateCommand(this ComplexSocket complexSocket, string username, string password, Encoding encoding)
-		{
-			Contract.Requires(complexSocket != null);
-			Contract.Requires(!string.IsNullOrWhiteSpace(username));
-			Contract.Requires(encoding != null);
-
-			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding);
-
-			var userCommand = string.Format("USER {0}", username);
-
-			if (string.IsNullOrWhiteSpace(password))
+			if (complexResult.FtpResponseType == FtpResponseType.PositiveIntermediate)
 			{
-				complexFtpCommand.Command = userCommand;
-			}
-			else
-			{
-				complexFtpCommand.Commands = new[]
+				complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
 				{
-					userCommand, string.Format("PASS {0}", password)
+					Command = string.Format("PASS {0}", password)
 				};
+				complexResult = complexFtpCommand.SendCommand();
+				if (!complexResult.Success)
+				{
+					throw new FtpException(complexResult.ResponseMessage);
+				}
 			}
 
-			return complexFtpCommand;
+			return complexResult;
 		}
 
-		internal static SocketAsyncEventArgs SendFeatures(this ComplexSocket complexSocket, Encoding encoding)
+		internal static ComplexResult SendFeatures(this ComplexSocket complexSocket, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 
@@ -80,30 +66,31 @@ namespace sharpLightFtp.Extensions
 			{
 				Command = "FEAT"
 			};
-			var socketAsyncEventArgs = complexFtpCommand.SendCommand();
+			var complexResult = complexFtpCommand.SendCommand();
 
-			return socketAsyncEventArgs;
+			return complexResult;
 		}
 
-		internal static SocketAsyncEventArgs Receive(this ComplexSocket complexSocket)
+		internal static SocketEventArgs Receive(this ComplexSocket complexSocket, SocketEventArgs sendSocketEventArgs)
 		{
 			Contract.Requires(complexSocket != null);
 
 			var socket = complexSocket.Socket;
 			var endPoint = complexSocket.EndPoint;
 
-			var mutex = new AutoResetEvent(false);
+			var receiveSocketEventArgs = endPoint.GetSocketEventArgs();
+			{
+				var responseBuffer = new byte[1024];
+				receiveSocketEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
+			}
 
-			var responseBuffer = new byte[1024];
-			var socketAsyncEventArgs = endPoint.GetSocketAsyncEventArgs();
-			socketAsyncEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
-			socketAsyncEventArgs.Completed += (sender, receiveSocketAsyncEventArgs) => mutex.Set();
+			var async = socket.ReceiveAsync(receiveSocketEventArgs);
+			if (async)
+			{
+				receiveSocketEventArgs.AutoResetEvent.WaitOne();
+			}
 
-			socket.ReceiveAsync(socketAsyncEventArgs);
-
-			mutex.WaitOne();
-
-			return socketAsyncEventArgs;
+			return receiveSocketEventArgs;
 		}
 
 	}

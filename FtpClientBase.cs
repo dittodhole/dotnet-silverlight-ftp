@@ -13,36 +13,44 @@ namespace sharpLightFtp
 	{
 		public Encoding Encoding { get; set; }
 
-		protected static void ExecuteQueueAsync(Queue<Func<SocketAsyncEventArgs>> queue, Action<SocketAsyncEventArgs> finalAction)
+		protected static void ExecuteQueueAsync(Queue<Func<ComplexResult>> queue, Action<ComplexResult> finalAction)
 		{
 			Contract.Requires(queue != null);
 			Contract.Requires(queue.Any());
 			Contract.Requires(finalAction != null);
+
 			ThreadPool.QueueUserWorkItem(callBack => ExecuteQueue(queue, finalAction));
 		}
 
-		private static void ExecuteQueue(Queue<Func<SocketAsyncEventArgs>> queue, Action<SocketAsyncEventArgs> finalAction)
+		private static void ExecuteQueue(Queue<Func<ComplexResult>> queue, Action<ComplexResult> finalAction)
 		{
 			Contract.Requires(queue != null);
 			Contract.Requires(queue.Any());
 			Contract.Requires(finalAction != null);
 
-			SocketAsyncEventArgs socketAsyncEventArgs = null;
+			ComplexResult complexResult = null;
 			while (queue.Any())
 			{
 				var predicate = queue.Dequeue();
-				socketAsyncEventArgs = predicate.Invoke();
-				var isSuccess = socketAsyncEventArgs.IsSuccess();
-				if (!isSuccess)
+				complexResult = predicate.Invoke();
+				var ftpResponseType = complexResult.FtpResponseType;
+				switch (ftpResponseType)
 				{
-					finalAction.Invoke(socketAsyncEventArgs);
-					return;
+					case FtpResponseType.PositiveCompletion:
+					case FtpResponseType.PositiveIntermediate:
+					case FtpResponseType.PositivePreliminary:
+						continue;
+					case FtpResponseType.None:
+					case FtpResponseType.PermanentNegativeCompletion:
+					case FtpResponseType.TransientNegativeCompletion:
+						finalAction.Invoke(complexResult);
+						return;
 				}
 			}
 
-			Contract.Assert(socketAsyncEventArgs != null);
+			Contract.Assert(complexResult != null);
 
-			finalAction.Invoke(socketAsyncEventArgs);
+			finalAction.Invoke(complexResult);
 		}
 	}
 }

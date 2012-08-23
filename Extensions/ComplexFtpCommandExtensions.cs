@@ -1,42 +1,38 @@
 ﻿using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Net.Sockets;
-using System.Threading;
 
 namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexFtpCommandExtensions
 	{
-		internal static SocketAsyncEventArgs SendCommand(this ComplexFtpCommand complexFtpCommand)
+		internal static ComplexResult SendCommand(this ComplexFtpCommand complexFtpCommand)
 		{
 			Contract.Requires(complexFtpCommand != null);
-			Contract.Requires(complexFtpCommand.Commands.Any());
+			Contract.Requires(!string.IsNullOrWhiteSpace(complexFtpCommand.Command));
 
 			var encoding = complexFtpCommand.Encoding;
-			var commands = complexFtpCommand.Commands;
+			var command = complexFtpCommand.Command;
 			var complexSocket = complexFtpCommand.ComplexSocket;
 			var endPoint = complexSocket.EndPoint;
 			var socket = complexSocket.Socket;
 
-			foreach (var command in commands)
+			var sendSocketEventArgs = endPoint.GetSocketEventArgs();
 			{
-				var mutex = new AutoResetEvent(false);
-
 				var sendBuffer = encoding.GetBytes(command);
-				var sendAsyncEventArgs = endPoint.GetSocketAsyncEventArgs();
-				sendAsyncEventArgs.SetBuffer(sendBuffer, 0, sendBuffer.Length);
-				sendAsyncEventArgs.Completed += (sender, sendSocketAsyncEventArgs) => mutex.Set();
-
-				socket.SendAsync(sendAsyncEventArgs);
-
-				mutex.WaitOne();
+				sendSocketEventArgs.SetBuffer(sendBuffer, 0, sendBuffer.Length);
 			}
 
-			var receiveSocketAsyncEventArgs = complexSocket.Receive();
+			var async = socket.SendAsync(sendSocketEventArgs);
+			if (async)
+			{
+				sendSocketEventArgs.AutoResetEvent.WaitOne();
+			}
+
+			var receiveSocketAsyncEventArgs = complexSocket.Receive(sendSocketEventArgs);
 
 			var complexResult = receiveSocketAsyncEventArgs.GetComplexResult(encoding);
+			complexResult.SocketAsyncEventArgs = receiveSocketAsyncEventArgs;
 
-			return receiveSocketAsyncEventArgs;
+			return complexResult;
 		}
 	}
 }

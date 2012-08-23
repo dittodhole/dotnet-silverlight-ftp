@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Net.Sockets;
 using System.Text;
 using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
@@ -88,19 +87,19 @@ namespace sharpLightFtp
 			var complexSocket = this.GetComplexSocket();
 			var socket = complexSocket.Socket;
 
-			var queue = new Queue<Func<SocketAsyncEventArgs>>();
+			var queue = new Queue<Func<ComplexResult>>();
 			{
 				queue.Enqueue(() => complexSocket.Connect(this.Encoding));
 				queue.Enqueue(() => complexSocket.Authenticate(this.Username, this.Password, this.Encoding));
 			}
 
-			Action<SocketAsyncEventArgs> finalAction = asyncEventArgs =>
+			Action<ComplexResult> finalAction = complexResult =>
 			{
 				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
 				{
 					Socket = socket,
-					Exception = asyncEventArgs.GetException(),
-					Success = asyncEventArgs.IsSuccess()
+					Exception = complexResult.SocketAsyncEventArgs.GetException(),
+					Success = complexResult.SocketAsyncEventArgs.IsSuccess()
 				};
 				this.RaiseTestConnectionCompleted(this, ftpCommandCompletedEventArgs);
 			};
@@ -123,23 +122,22 @@ namespace sharpLightFtp
 		public void GetFeaturesAsync()
 		{
 			var complexSocket = this.GetComplexSocket();
-			var endPoint = complexSocket.EndPoint;
 			var socket = complexSocket.Socket;
 
-			var queue = new Queue<Func<SocketAsyncEventArgs>>();
+			var queue = new Queue<Func<ComplexResult>>();
 			{
 				queue.Enqueue(() => complexSocket.Connect(this.Encoding));
 				queue.Enqueue(() => complexSocket.Authenticate(this.Username, this.Password, this.Encoding));
 				queue.Enqueue(() => complexSocket.SendFeatures(this.Encoding));
 			}
 
-			Action<SocketAsyncEventArgs> finalAction = asyncEventArgs =>
+			Action<ComplexResult> finalAction = asyncEventArgs =>
 			{
 				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
 				{
 					Socket = socket,
-					Exception = asyncEventArgs.GetException(),
-					Success = asyncEventArgs.IsSuccess()
+					Exception = asyncEventArgs.SocketAsyncEventArgs.GetException(),
+					Success = asyncEventArgs.SocketAsyncEventArgs.IsSuccess()
 				};
 				this.RaiseGetFeaturesCompleted(this, ftpCommandCompletedEventArgs);
 			};

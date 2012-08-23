@@ -2,33 +2,34 @@
 using System.Diagnostics.Contracts;
 using System.Net.Sockets;
 using System.Text;
+using sharpLightFtp.EventArgs;
 
 namespace sharpLightFtp.Extensions
 {
 	internal static class SocketAsyncEventArgsExtensions
 	{
-		internal static bool IsSuccess(this SocketAsyncEventArgs socketAsyncEventArgs)
+		internal static bool IsSuccess(this SocketEventArgs socketEventArgs)
 		{
-			Contract.Requires(socketAsyncEventArgs != null);
+			Contract.Requires(socketEventArgs != null);
 
-			return socketAsyncEventArgs.SocketError == SocketError.Success;
+			return socketEventArgs.SocketError == SocketError.Success;
 		}
 
-		internal static Exception GetException(this SocketAsyncEventArgs socketAsyncEventArgs)
+		internal static Exception GetException(this SocketEventArgs socketEventArgs)
 		{
-			Contract.Requires(socketAsyncEventArgs != null);
+			Contract.Requires(socketEventArgs != null);
 
-			return socketAsyncEventArgs.ConnectByNameError;
+			return socketEventArgs.ConnectByNameError;
 		}
 
-		internal static ComplexResult GetComplexResult(this SocketAsyncEventArgs socketAsyncEventArgs, Encoding encoding)
+		internal static ComplexResult GetComplexResult(this SocketEventArgs socketEventArgs, Encoding encoding)
 		{
-			Contract.Requires(socketAsyncEventArgs != null);
+			Contract.Requires(socketEventArgs != null);
 			Contract.Requires(encoding != null);
 
-			var buffer = socketAsyncEventArgs.Buffer;
-			var offset = socketAsyncEventArgs.Offset;
-			var bytesTransferred = socketAsyncEventArgs.BytesTransferred;
+			var buffer = socketEventArgs.Buffer;
+			var offset = socketEventArgs.Offset;
+			var bytesTransferred = socketEventArgs.BytesTransferred;
 			var data = encoding.GetString(buffer, offset, bytesTransferred);
 			var complexResult = new ComplexResult(data);
 
