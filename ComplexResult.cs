@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
+﻿using System.Collections.Generic;
 using sharpLightFtp.EventArgs;
 
 namespace sharpLightFtp
@@ -15,34 +12,12 @@ namespace sharpLightFtp
 
 		public SocketEventArgs SocketAsyncEventArgs;
 
-		public ComplexResult(string data)
+		internal ComplexResult(FtpResponseType ftpResponseType, string responseCode, string responseMessage, IEnumerable<string> messages)
 		{
-			var lines = data.Split(Environment.NewLine.ToArray(), StringSplitOptions.RemoveEmptyEntries);
-			foreach (var line in lines)
-			{
-				var match = Regex.Match(line, @"^(\d{3})\s(.*)$");
-				if (match.Success)
-				{
-					if (match.Groups.Count > 1)
-					{
-						this._responseCode = match.Groups[1].Value;
-					}
-					if (match.Groups.Count > 2)
-					{
-						this._responseMessage = match.Groups[2].Value;
-					}
-					if (!string.IsNullOrWhiteSpace(this._responseCode))
-					{
-						var firstCharacter = this._responseCode.First();
-						var character = firstCharacter.ToString();
-						this._ftpResponseType = (FtpResponseType) Convert.ToInt32(character);
-					}
-				}
-				else
-				{
-					this._messages.Add(line);
-				}
-			}
+			this._ftpResponseType = ftpResponseType;
+			this._responseCode = responseCode;
+			this._responseMessage = responseMessage;
+			this._messages.AddRange(messages);
 		}
 
 		public string ResponseCode

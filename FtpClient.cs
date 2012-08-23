@@ -84,20 +84,20 @@ namespace sharpLightFtp
 
 		public void TestConnectionAsync()
 		{
-			var complexSocket = this.GetComplexSocket();
-			var socket = complexSocket.Socket;
+			var controlComplexSocket = this.GetComplexSocket();
+			var controlSocket = controlComplexSocket.Socket;
 
 			var queue = new Queue<Func<ComplexResult>>();
 			{
-				queue.Enqueue(() => complexSocket.Connect(this.Encoding));
-				queue.Enqueue(() => complexSocket.Authenticate(this.Username, this.Password, this.Encoding));
+				queue.Enqueue(() => controlComplexSocket.Connect(this.Encoding));
+				queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
 			}
 
 			Action<ComplexResult> finalAction = complexResult =>
 			{
 				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
 				{
-					Socket = socket,
+					Socket = controlSocket,
 					Exception = complexResult.SocketAsyncEventArgs.GetException(),
 					Success = complexResult.SocketAsyncEventArgs.IsSuccess()
 				};
@@ -121,21 +121,21 @@ namespace sharpLightFtp
 
 		public void GetFeaturesAsync()
 		{
-			var complexSocket = this.GetComplexSocket();
-			var socket = complexSocket.Socket;
+			var controlComplexSocket = this.GetComplexSocket();
+			var controlSocket = controlComplexSocket.Socket;
 
 			var queue = new Queue<Func<ComplexResult>>();
 			{
-				queue.Enqueue(() => complexSocket.Connect(this.Encoding));
-				queue.Enqueue(() => complexSocket.Authenticate(this.Username, this.Password, this.Encoding));
-				queue.Enqueue(() => complexSocket.SendFeatures(this.Encoding));
+				queue.Enqueue(() => controlComplexSocket.Connect(this.Encoding));
+				queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
+				queue.Enqueue(() => controlComplexSocket.SendFeatures(this.Encoding));
 			}
 
 			Action<ComplexResult> finalAction = asyncEventArgs =>
 			{
 				var ftpCommandCompletedEventArgs = new FtpCommandCompletedEventArgs
 				{
-					Socket = socket,
+					Socket = controlSocket,
 					Exception = asyncEventArgs.SocketAsyncEventArgs.GetException(),
 					Success = asyncEventArgs.SocketAsyncEventArgs.IsSuccess()
 				};

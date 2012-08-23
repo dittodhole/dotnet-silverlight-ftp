@@ -10,7 +10,7 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(!string.IsNullOrWhiteSpace(complexFtpCommand.Command));
 
 			var encoding = complexFtpCommand.Encoding;
-			var command = complexFtpCommand.Command;
+			var command = string.Concat(complexFtpCommand.Command, "\n");
 			var complexSocket = complexFtpCommand.ComplexSocket;
 			var endPoint = complexSocket.EndPoint;
 			var socket = complexSocket.Socket;
@@ -27,10 +27,7 @@ namespace sharpLightFtp.Extensions
 				sendSocketEventArgs.AutoResetEvent.WaitOne();
 			}
 
-			var receiveSocketAsyncEventArgs = complexSocket.Receive();
-
-			var complexResult = receiveSocketAsyncEventArgs.GetComplexResult(encoding);
-			complexResult.SocketAsyncEventArgs = receiveSocketAsyncEventArgs;
+			var complexResult = complexSocket.Receive(encoding);
 
 			return complexResult;
 		}

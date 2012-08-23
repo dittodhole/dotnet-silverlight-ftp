@@ -22,7 +22,7 @@ namespace sharpLightFtp.Extensions
 			return socketEventArgs.ConnectByNameError;
 		}
 
-		internal static ComplexResult GetComplexResult(this SocketEventArgs socketEventArgs, Encoding encoding)
+		internal static string GetData(this SocketEventArgs socketEventArgs, Encoding encoding)
 		{
 			Contract.Requires(socketEventArgs != null);
 			Contract.Requires(encoding != null);
@@ -31,9 +31,8 @@ namespace sharpLightFtp.Extensions
 			var offset = socketEventArgs.Offset;
 			var bytesTransferred = socketEventArgs.BytesTransferred;
 			var data = encoding.GetString(buffer, offset, bytesTransferred);
-			var complexResult = new ComplexResult(data);
 
-			return complexResult;
+			return data;
 		}
 	}
 }
