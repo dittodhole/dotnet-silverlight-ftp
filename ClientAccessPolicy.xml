@@ -8,6 +8,7 @@
 			</allow-from>
 			<grant-to>
 				<socket-resource port="21" protocol="tcp" />
+				<socket-resource port="1023-65535" protocol="tcp" />
 			</grant-to>
 		</policy>
 	</cross-domain-access>
