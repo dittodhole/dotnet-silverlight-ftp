@@ -10,7 +10,7 @@ namespace sharpLightFtp
 		private readonly string _responseCode;
 		private readonly string _responseMessage;
 
-		public SocketEventArgs SocketAsyncEventArgs;
+		internal SocketEventArgs SocketAsyncEventArgs;
 
 		internal ComplexResult(FtpResponseType ftpResponseType, string responseCode, string responseMessage, IEnumerable<string> messages)
 		{

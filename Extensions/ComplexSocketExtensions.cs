@@ -9,7 +9,7 @@ namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexSocketExtensions
 	{
-		internal static bool Connect(this ComplexSocket complexSocket, Encoding encoding)
+		internal static bool ConnectToControlSocket(this ComplexSocket complexSocket, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(complexSocket.IsControlSocket);
@@ -29,6 +29,26 @@ namespace sharpLightFtp.Extensions
 			var success = complexResult.Success;
 
 			return success;
+		}
+
+		internal static bool ConnectToTransferSocket(this ComplexSocket complexSocket)
+		{
+			Contract.Requires(complexSocket != null);
+			Contract.Requires(!complexSocket.IsControlSocket);
+
+			var transferSocket = complexSocket.Socket;
+			var endPoint = complexSocket.EndPoint;
+
+			var sendSocketEventArgs = endPoint.GetSocketEventArgs();
+			var async = transferSocket.ConnectAsync(sendSocketEventArgs);
+			if (async)
+			{
+				sendSocketEventArgs.AutoResetEvent.WaitOne();
+			}
+
+			var exception = sendSocketEventArgs.ConnectByNameError;
+
+			return exception != null;
 		}
 
 		internal static bool Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)

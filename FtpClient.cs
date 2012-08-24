@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
@@ -9,8 +11,10 @@ namespace sharpLightFtp
 	public sealed class FtpClient : FtpClientBase
 	{
 		private readonly object _lockControlComplexSocket = new object();
+		private readonly object _lockTransferComplexSocket = new object();
 		private readonly Type _typeOfFtpFeatures = typeof (FtpFeatures);
 		private ComplexSocket _controlComplexSocket;
+		private ComplexSocket _transferComplexSocket;
 		private FtpFeatures _features = FtpFeatures.EMPTY;
 		private int _port;
 
@@ -87,7 +91,7 @@ namespace sharpLightFtp
 					var controlComplexSocket = this.GetControlComplexSocket();
 					var queue = new Queue<Func<bool>>();
 					{
-						queue.Enqueue(() => controlComplexSocket.Connect(this.Encoding));
+						queue.Enqueue(() => controlComplexSocket.ConnectToControlSocket(this.Encoding));
 						queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
 					}
 
@@ -169,10 +173,63 @@ namespace sharpLightFtp
 					return false;
 				}
 
-				// TODO parse passiv
+				var matches = Regex.Match(complexResult.ResponseMessage, "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
+				if (!matches.Success)
+				{
+					return false;
+				}
+				if (matches.Groups.Count != 7)
+				{
+					return false;
+				}
+
+				var octets = new byte[4];
+				for (var i = 1; i <= 4; i++)
+				{
+					var value = matches.Groups[i].Value;
+					byte octet;
+					if (!byte.TryParse(value, out octet))
+					{
+						return false;
+					}
+					octets[i - 1] = octet;
+				}
+
+				var ipAddress = new IPAddress(octets);
+				int port;
+				{
+					int p1;
+					{
+						var value = matches.Groups[5].Value;
+						if (!int.TryParse(value, out p1))
+						{
+							return false;
+						}
+					}
+					int p2;
+					{
+						var value = matches.Groups[6].Value;
+						if (!int.TryParse(value, out p2))
+						{
+							return false;
+						}
+					}
+					//port = p1 * 256 + p2;
+					port = (p1 << 8) + p2;
+				}
+
+				this._transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
+
+				connected = this._transferComplexSocket.ConnectToTransferSocket();
+				if (!connected)
+				{
+					this._transferComplexSocket.IsFailed = true;
+				}
 			}
 
-			return true;
+			var isFailed = this._transferComplexSocket.IsFailed;
+			
+			return !isFailed;
 		}
 	}
 }

@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("sharpLightFtp")]
@@ -13,3 +14,4 @@ using System.Runtime.InteropServices;
 [assembly: Guid("aeb3da47-5a6c-438c-b863-d9754f62afbf")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: CLSCompliant(false)]
