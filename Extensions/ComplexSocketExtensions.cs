@@ -12,6 +12,8 @@ namespace sharpLightFtp.Extensions
 		internal static bool Connect(this ComplexSocket complexSocket, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
+			Contract.Requires(complexSocket.IsControlSocket);
+			Contract.Requires(encoding != null);
 
 			var controlSocket = complexSocket.Socket;
 			var endPoint = complexSocket.EndPoint;
@@ -32,6 +34,7 @@ namespace sharpLightFtp.Extensions
 		internal static bool Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
+			Contract.Requires(complexSocket.IsControlSocket);
 			Contract.Requires(encoding != null);
 
 			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
@@ -60,10 +63,27 @@ namespace sharpLightFtp.Extensions
 		internal static ComplexResult GetFeatures(this ComplexSocket complexSocket, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
+			Contract.Requires(complexSocket.IsControlSocket);
+			Contract.Requires(encoding != null);
 
 			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
 			{
 				Command = "FEAT"
+			};
+			var complexResult = complexFtpCommand.SendCommand();
+
+			return complexResult;
+		}
+
+		internal static ComplexResult SetPassive(this ComplexSocket complexSocket, Encoding encoding)
+		{
+			Contract.Requires(complexSocket != null);
+			Contract.Requires(complexSocket.IsControlSocket);
+			Contract.Requires(encoding != null);
+
+			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
+			{
+				Command = "PASV"
 			};
 			var complexResult = complexFtpCommand.SendCommand();
 
@@ -150,6 +170,5 @@ namespace sharpLightFtp.Extensions
 
 			return complexResult;
 		}
-
 	}
 }

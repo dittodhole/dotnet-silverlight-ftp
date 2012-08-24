@@ -8,7 +8,14 @@ namespace sharpLightFtp
 	internal sealed class ComplexSocket : IDisposable
 	{
 		private readonly EndPoint _endPoint;
+		private readonly bool _isControlSocket;
 		private readonly Socket _socket;
+
+		internal ComplexSocket(Socket socket, EndPoint endPoint, bool isControlSocket)
+			: this(socket, endPoint)
+		{
+			this._isControlSocket = isControlSocket;
+		}
 
 		internal ComplexSocket(Socket socket, EndPoint endPoint)
 		{
@@ -35,9 +42,23 @@ namespace sharpLightFtp
 			}
 		}
 
+		internal bool IsControlSocket
+		{
+			get
+			{
+				return this._isControlSocket;
+			}
+		}
+
+		internal bool IsFailed { get; set; }
+
+		#region IDisposable Members
+
 		public void Dispose()
 		{
 			this.Socket.Dispose();
 		}
+
+		#endregion
 	}
 }
