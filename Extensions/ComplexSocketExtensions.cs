@@ -78,14 +78,8 @@ namespace sharpLightFtp.Extensions
 
 			var receiveSocketEventArgs = endPoint.GetSocketEventArgs();
 			{
-				const int bufferSize = 1024;
-				{
-					var responseBuffer = new byte[bufferSize];
-					receiveSocketEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
-				}
-				{
-					socket.ReceiveBufferSize = bufferSize;
-				}
+				var responseBuffer = new byte[socket.ReceiveBufferSize];
+				receiveSocketEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
 			}
 
 			bool caughtInTheLoop;

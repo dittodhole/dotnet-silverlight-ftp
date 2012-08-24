@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using sharpLightFtp.EventArgs;
 
 namespace sharpLightFtp
 {
-	public sealed class ComplexResult
+	internal sealed class ComplexResult : IDisposable
 	{
 		private readonly FtpResponseType _ftpResponseType;
 		private readonly List<string> _messages = new List<string>();
@@ -20,7 +21,7 @@ namespace sharpLightFtp
 			this._messages.AddRange(messages);
 		}
 
-		public string ResponseCode
+		internal string ResponseCode
 		{
 			get
 			{
@@ -28,7 +29,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		public string ResponseMessage
+		internal string ResponseMessage
 		{
 			get
 			{
@@ -36,7 +37,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		public IEnumerable<string> Messages
+		internal IEnumerable<string> Messages
 		{
 			get
 			{
@@ -44,7 +45,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		public FtpResponseType FtpResponseType
+		internal FtpResponseType FtpResponseType
 		{
 			get
 			{
@@ -52,7 +53,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		public bool Success
+		internal bool Success
 		{
 			get
 			{
@@ -67,5 +68,18 @@ namespace sharpLightFtp
 				}
 			}
 		}
+
+		#region IDisposable Members
+
+		public void Dispose()
+		{
+			var socketAsyncEventArgs = this.SocketAsyncEventArgs;
+			if (socketAsyncEventArgs != null)
+			{
+				socketAsyncEventArgs.Dispose();
+			}
+		}
+
+		#endregion
 	}
 }

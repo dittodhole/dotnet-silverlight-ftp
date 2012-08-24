@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using sharpLightFtp.Extensions;
 
@@ -96,14 +98,7 @@ namespace sharpLightFtp
 		public IEnumerable<string> GetRawListing(string path, FtpListType ftpListType)
 		{
 			{
-				var queue = new Queue<Func<bool>>();
-				{
-					queue.Enqueue(this.EnsureConnection);
-					queue.Enqueue(this.EnsureFeatures);
-					queue.Enqueue(this.SetPassive);
-				}
-
-				var success = ExecuteQueue(queue);
+				var success = this.BasicConnect();
 				if (!success)
 				{
 					return Enumerable.Empty<string>();
@@ -178,6 +173,92 @@ namespace sharpLightFtp
 			var messages = complexResult.Messages;
 
 			return messages;
+		}
+
+		public bool Upload(Stream stream, string remoteFile)
+		{
+			Contract.Requires(stream != null);
+			Contract.Requires(stream.CanRead);
+			Contract.Requires(!string.IsNullOrWhiteSpace(remoteFile));
+
+			{
+				var success = this.BasicConnect();
+				if (!success)
+				{
+					return false;
+				}
+			}
+
+			ComplexResult complexResult;
+
+			lock (this._lockControlComplexSocket)
+			{
+				lock (this._lockTransferComplexSocket)
+				{
+					// TODO cope with directories
+					var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+					{
+						Command = string.Format("STOR {0}", remoteFile)
+					};
+					using (complexFtpCommand)
+					{
+						var success = complexFtpCommand.Send();
+						if (!success)
+						{
+							return false;
+						}
+						{
+							var connected = this._transferComplexSocket.Connect();
+							if (!connected)
+							{
+								return false;
+							}
+
+							using (var transferSocket = this._transferComplexSocket.Socket)
+							{
+								var buffer = new byte[transferSocket.SendBufferSize];
+								int read;
+								while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+								{
+									var socketEventArgs = this._transferComplexSocket.EndPoint.GetSocketEventArgs();
+									socketEventArgs.SetBuffer(buffer, 0, read);
+									transferSocket.SendAsync(socketEventArgs);
+
+									socketEventArgs.AutoResetEvent.WaitOne();
+
+									var exception = socketEventArgs.ConnectByNameError;
+									if (exception != null)
+									{
+										return false;
+									}
+								}
+							}
+						}
+
+						complexResult = this._controlComplexSocket.Receive(this.Encoding);
+					}
+				}
+			}
+
+			{
+				var success = complexResult.Success;
+
+				return success;
+			}
+		}
+
+		private bool BasicConnect()
+		{
+			var queue = new Queue<Func<bool>>();
+			{
+				queue.Enqueue(this.EnsureConnection);
+				queue.Enqueue(this.EnsureFeatures);
+				queue.Enqueue(this.SetPassive);
+			}
+
+			var success = ExecuteQueue(queue);
+
+			return success;
 		}
 
 		private bool EnsureConnection()

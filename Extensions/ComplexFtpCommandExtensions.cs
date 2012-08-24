@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.Contracts;
+﻿using System;
+using System.Diagnostics.Contracts;
 
 namespace sharpLightFtp.Extensions
 {
@@ -10,7 +11,7 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(!string.IsNullOrWhiteSpace(complexFtpCommand.Command));
 
 			var encoding = complexFtpCommand.Encoding;
-			var command = string.Concat(complexFtpCommand.Command, "\n");
+			var command = string.Concat(complexFtpCommand.Command, Environment.NewLine);
 			var complexSocket = complexFtpCommand.ComplexSocket;
 			var endPoint = complexSocket.EndPoint;
 			var socket = complexSocket.Socket;
