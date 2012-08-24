@@ -167,64 +167,74 @@ namespace sharpLightFtp
 					return false;
 				}
 
-				var complexResult = this._controlComplexSocket.SetPassive(this.Encoding);
-				if (!complexResult.Success)
+				lock (this._lockTransferComplexSocket)
 				{
-					return false;
-				}
-
-				var matches = Regex.Match(complexResult.ResponseMessage, "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
-				if (!matches.Success)
-				{
-					return false;
-				}
-				if (matches.Groups.Count != 7)
-				{
-					return false;
-				}
-
-				var octets = new byte[4];
-				for (var i = 1; i <= 4; i++)
-				{
-					var value = matches.Groups[i].Value;
-					byte octet;
-					if (!byte.TryParse(value, out octet))
+					if (this._transferComplexSocket != null)
 					{
 						return false;
 					}
-					octets[i - 1] = octet;
-				}
 
-				var ipAddress = new IPAddress(octets);
-				int port;
-				{
-					int p1;
+					var complexResult = this._controlComplexSocket.SetPassive(this.Encoding);
+					if (!complexResult.Success)
 					{
-						var value = matches.Groups[5].Value;
-						if (!int.TryParse(value, out p1))
+						return false;
+					}
+
+					var matches = Regex.Match(complexResult.ResponseMessage, "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
+					if (!matches.Success)
+					{
+						return false;
+					}
+					if (matches.Groups.Count != 7)
+					{
+						return false;
+					}
+
+					var octets = new byte[4];
+					for (var i = 1; i <= 4; i++)
+					{
+						var value = matches.Groups[i].Value;
+						byte octet;
+						if (!byte.TryParse(value, out octet))
 						{
 							return false;
 						}
+						octets[i - 1] = octet;
 					}
-					int p2;
+
+					var ipAddress = new IPAddress(octets);
+					int port;
 					{
-						var value = matches.Groups[6].Value;
-						if (!int.TryParse(value, out p2))
+						int p1;
 						{
-							return false;
+							var value = matches.Groups[5].Value;
+							if (!int.TryParse(value, out p1))
+							{
+								return false;
+							}
 						}
+						int p2;
+						{
+							var value = matches.Groups[6].Value;
+							if (!int.TryParse(value, out p2))
+							{
+								return false;
+							}
+						}
+						//port = p1 * 256 + p2;
+						port = (p1 << 8) + p2;
 					}
-					//port = p1 * 256 + p2;
-					port = (p1 << 8) + p2;
+
+					var transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
+					connected = transferComplexSocket.ConnectToTransferSocket();
+					if (!connected)
+					{
+						transferComplexSocket.IsFailed = true;
+					}
+
+					this._transferComplexSocket = transferComplexSocket;
 				}
 
-				this._transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
-
-				connected = this._transferComplexSocket.ConnectToTransferSocket();
-				if (!connected)
-				{
-					this._transferComplexSocket.IsFailed = true;
-				}
 			}
 
 			var isFailed = this._transferComplexSocket.IsFailed;

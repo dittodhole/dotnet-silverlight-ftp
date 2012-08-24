@@ -57,7 +57,7 @@ namespace sharpLightFtp
 		/// 	Supports the MLSD command
 		/// </summary>
 		MLSD = 2,
-
+		/*
 		/// <summary>
 		/// 	Supports the SIZE command
 		/// </summary>
@@ -96,6 +96,6 @@ namespace sharpLightFtp
 		/// <summary>
 		/// 	PRET Command used in distributed ftp server software DrFTPD
 		/// </summary>
-		PRET = 512
+		//PRET = 512*/
 	}
 }

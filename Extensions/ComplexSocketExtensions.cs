@@ -48,7 +48,7 @@ namespace sharpLightFtp.Extensions
 
 			var exception = sendSocketEventArgs.ConnectByNameError;
 
-			return exception != null;
+			return exception == null;
 		}
 
 		internal static bool Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)

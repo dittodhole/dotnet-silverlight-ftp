@@ -38,7 +38,7 @@ namespace sharpLightFtp
 
 			var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			var endPoint = new IPEndPoint(ipAddress, port);
-			var complexSocket = new ComplexSocket(socket, endPoint);
+			var complexSocket = new ComplexSocket(socket, endPoint, false);
 
 			return complexSocket;
 		}
