@@ -1,5 +1,7 @@
 ﻿using System;
 
+// originally designed by http://netftp.codeplex.com/
+
 namespace sharpLightFtp
 {
 	public enum FtpResponseType
@@ -91,11 +93,64 @@ namespace sharpLightFtp
 		/// <summary>
 		/// 	Supports for UTF8
 		/// </summary>
-		UTF8 = 256,
+		UTF8 = 256,*/
 
 		/// <summary>
 		/// 	PRET Command used in distributed ftp server software DrFTPD
 		/// </summary>
-		//PRET = 512*/
+		PRET = 512
+	}
+
+	/// <summary>
+	/// 	The list command to be used on the server
+	/// </summary>
+	public enum FtpListType
+	{
+		/// <summary>
+		/// 	Standard hard to parse file listing
+		/// </summary>
+		LIST,
+
+		/// <summary>
+		/// 	Newer easier to parse file listing
+		/// </summary>
+		MLSD,
+
+		/// <summary>
+		/// 	Newer easier to parse file listing that returns info on a single
+		/// 	object over the command channel (no data channel required)
+		/// </summary>
+		MLST
+	}
+
+	/// <summary>
+	/// 	File system object type
+	/// </summary>
+	public enum FtpObjectType
+	{
+		/// <summary>
+		/// 	A directory.
+		/// </summary>
+		Directory,
+
+		/// <summary>
+		/// 	A file.
+		/// </summary>
+		File,
+
+		/// <summary>
+		/// 	A symbolic link.
+		/// </summary>
+		Link,
+
+		/// <summary>
+		/// 	A device.
+		/// </summary>
+		Device,
+
+		/// <summary>
+		/// 	No idea.
+		/// </summary>
+		Unknown
 	}
 }

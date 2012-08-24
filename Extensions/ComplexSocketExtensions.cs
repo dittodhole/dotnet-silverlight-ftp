@@ -9,32 +9,9 @@ namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexSocketExtensions
 	{
-		internal static bool ConnectToControlSocket(this ComplexSocket complexSocket, Encoding encoding)
+		internal static bool Connect(this ComplexSocket complexSocket)
 		{
 			Contract.Requires(complexSocket != null);
-			Contract.Requires(complexSocket.IsControlSocket);
-			Contract.Requires(encoding != null);
-
-			var controlSocket = complexSocket.Socket;
-			var endPoint = complexSocket.EndPoint;
-
-			var sendSocketEventArgs = endPoint.GetSocketEventArgs();
-			var async = controlSocket.ConnectAsync(sendSocketEventArgs);
-			if (async)
-			{
-				sendSocketEventArgs.AutoResetEvent.WaitOne();
-			}
-
-			var complexResult = complexSocket.Receive(encoding);
-			var success = complexResult.Success;
-
-			return success;
-		}
-
-		internal static bool ConnectToTransferSocket(this ComplexSocket complexSocket)
-		{
-			Contract.Requires(complexSocket != null);
-			Contract.Requires(!complexSocket.IsControlSocket);
 
 			var transferSocket = complexSocket.Socket;
 			var endPoint = complexSocket.EndPoint;
@@ -61,7 +38,12 @@ namespace sharpLightFtp.Extensions
 			{
 				Command = string.Format("USER {0}", username)
 			};
-			var complexResult = complexFtpCommand.SendCommand();
+			var success = complexFtpCommand.Send();
+			if (!success)
+			{
+				return false;
+			}
+			var complexResult = complexSocket.Receive(encoding);
 			if (!complexResult.Success)
 			{
 				return false;
@@ -72,42 +54,19 @@ namespace sharpLightFtp.Extensions
 				{
 					Command = string.Format("PASS {0}", password)
 				};
-				complexResult = complexFtpCommand.SendCommand();
+				success = complexFtpCommand.Send();
+				if (!success)
+				{
+					return false;
+				}
+				complexResult = complexSocket.Receive(encoding);
+				if (!complexResult.Success)
+				{
+					return false;
+				}
 			}
 
-			var success = complexResult.Success;
-
-			return success;
-		}
-
-		internal static ComplexResult GetFeatures(this ComplexSocket complexSocket, Encoding encoding)
-		{
-			Contract.Requires(complexSocket != null);
-			Contract.Requires(complexSocket.IsControlSocket);
-			Contract.Requires(encoding != null);
-
-			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
-			{
-				Command = "FEAT"
-			};
-			var complexResult = complexFtpCommand.SendCommand();
-
-			return complexResult;
-		}
-
-		internal static ComplexResult SetPassive(this ComplexSocket complexSocket, Encoding encoding)
-		{
-			Contract.Requires(complexSocket != null);
-			Contract.Requires(complexSocket.IsControlSocket);
-			Contract.Requires(encoding != null);
-
-			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
-			{
-				Command = "PASV"
-			};
-			var complexResult = complexFtpCommand.SendCommand();
-
-			return complexResult;
+			return true;
 		}
 
 		internal static ComplexResult Receive(this ComplexSocket complexSocket, Encoding encoding)
@@ -149,6 +108,10 @@ namespace sharpLightFtp.Extensions
 				}
 
 				var data = receiveSocketEventArgs.GetData(encoding);
+				if (string.IsNullOrWhiteSpace(data))
+				{
+					break;
+				}
 				var lines = data.Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
 				foreach (var line in lines)
 				{

@@ -4,7 +4,7 @@ namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexFtpCommandExtensions
 	{
-		internal static ComplexResult SendCommand(this ComplexFtpCommand complexFtpCommand)
+		internal static bool Send(this ComplexFtpCommand complexFtpCommand)
 		{
 			Contract.Requires(complexFtpCommand != null);
 			Contract.Requires(!string.IsNullOrWhiteSpace(complexFtpCommand.Command));
@@ -27,9 +27,9 @@ namespace sharpLightFtp.Extensions
 				sendSocketEventArgs.AutoResetEvent.WaitOne();
 			}
 
-			var complexResult = complexSocket.Receive(encoding);
+			var exception = sendSocketEventArgs.ConnectByNameError;
 
-			return complexResult;
+			return exception == null;
 		}
 	}
 }

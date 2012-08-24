@@ -1,11 +1,12 @@
-﻿using System.Diagnostics.Contracts;
+﻿using System;
+using System.Diagnostics.Contracts;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
 namespace sharpLightFtp
 {
-	internal sealed class ComplexFtpCommand
+	internal sealed class ComplexFtpCommand : IDisposable
 	{
 		private readonly ComplexSocket _complexSocket;
 		private readonly Encoding _encoding;
@@ -39,5 +40,14 @@ namespace sharpLightFtp
 				return this._encoding;
 			}
 		}
+
+		#region IDisposable Members
+
+		public void Dispose()
+		{
+			this.ComplexSocket.Dispose();
+		}
+
+		#endregion
 	}
 }

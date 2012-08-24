@@ -70,16 +70,114 @@ namespace sharpLightFtp
 			}
 		}
 
-		public bool GetFeatures()
+		public IEnumerable<FtpListItem> GetListing(string path)
 		{
-			var queue = new Queue<Func<bool>>();
+			FtpListType ftpListType;
+			if (this._features.HasFlag(FtpFeatures.MLSD))
 			{
-				queue.Enqueue(this.EnsureConnection);
-				queue.Enqueue(this.EnsureFeatures);
-				queue.Enqueue(this.SetPassive);
+				ftpListType = FtpListType.MLSD;
+			}
+			else if (this._features.HasFlag(FtpFeatures.MLST))
+			{
+				ftpListType = FtpListType.MLST;
+			}
+			else
+			{
+				ftpListType = FtpListType.LIST;
 			}
 
-			return ExecuteQueue(queue);
+			var rawListing = this.GetRawListing(path, ftpListType);
+
+			var ftpListItems = FtpListItem.ParseList(rawListing, ftpListType);
+
+			return ftpListItems;
+		}
+
+		public IEnumerable<string> GetRawListing(string path, FtpListType ftpListType)
+		{
+			{
+				var queue = new Queue<Func<bool>>();
+				{
+					queue.Enqueue(this.EnsureConnection);
+					queue.Enqueue(this.EnsureFeatures);
+					queue.Enqueue(this.SetPassive);
+				}
+
+				var success = ExecuteQueue(queue);
+				if (!success)
+				{
+					return Enumerable.Empty<string>();
+				}
+			}
+			
+			ComplexResult complexResult;
+
+			lock (this._lockControlComplexSocket)
+			{
+				lock (this._lockTransferComplexSocket)
+				{
+					string command;
+					switch (ftpListType)
+					{
+						case FtpListType.MLST:
+							command = "MLST";
+							break;
+						case FtpListType.LIST:
+							command = "LIST";
+							break;
+						case FtpListType.MLSD:
+							command = "MLSD";
+							break;
+						default:
+							throw new NotImplementedException();
+					}
+
+					var concreteCommand = string.Format("{0} {1}", command, path);
+
+					if (this._features.HasFlag(FtpFeatures.PRET))
+					{
+						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+						{
+							Command = string.Format("PRET {0}", concreteCommand)
+						};
+						var success = complexFtpCommand.Send();
+						if (!success)
+						{
+							return Enumerable.Empty<string>();
+						}
+						complexResult = this._controlComplexSocket.Receive(this.Encoding);
+						if (!complexResult.Success)
+						{
+							return Enumerable.Empty<string>();
+						}
+					}
+
+					{
+						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+						{
+							Command = concreteCommand
+						};
+						using (complexFtpCommand)
+						{
+							var success = complexFtpCommand.Send();
+							if (!success)
+							{
+								return Enumerable.Empty<string>();
+							}
+							var connected = this._transferComplexSocket.Connect();
+							if (!connected)
+							{
+								return Enumerable.Empty<string>();
+							}
+							complexResult = this._transferComplexSocket.Receive(this.Encoding);
+						}
+					}
+				}
+			}
+
+			var messages = complexResult.Messages;
+
+			return messages;
 		}
 
 		private bool EnsureConnection()
@@ -91,14 +189,22 @@ namespace sharpLightFtp
 					var controlComplexSocket = this.GetControlComplexSocket();
 					var queue = new Queue<Func<bool>>();
 					{
-						queue.Enqueue(() => controlComplexSocket.ConnectToControlSocket(this.Encoding));
+						queue.Enqueue(controlComplexSocket.Connect);
+						queue.Enqueue(() =>
+						{
+							var complexResult = controlComplexSocket.Receive(this.Encoding);
+							var success = complexResult.Success;
+							return success;
+						});
 						queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding));
 					}
 
-					var success = ExecuteQueue(queue);
-					if (!success)
 					{
-						controlComplexSocket.IsFailed = true;
+						var success = ExecuteQueue(queue);
+						if (!success)
+						{
+							controlComplexSocket.IsFailed = true;
+						}
 					}
 					this._controlComplexSocket = controlComplexSocket;
 				}
@@ -123,7 +229,18 @@ namespace sharpLightFtp
 				{
 					return true;
 				}
-				var complexResult = this._controlComplexSocket.GetFeatures(this.Encoding);
+
+				var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+				{
+					Command = "FEAT"
+				};
+				var success = complexFtpCommand.Send();
+				if (!success)
+				{
+					return false;
+				}
+
+				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
 				if (!complexResult.Success)
 				{
 					return false;
@@ -174,7 +291,16 @@ namespace sharpLightFtp
 						return false;
 					}
 
-					var complexResult = this._controlComplexSocket.SetPassive(this.Encoding);
+					var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+					{
+						Command = "PASV"
+					};
+					var success = complexFtpCommand.Send();
+					if (!success)
+					{
+						return false;
+					}
+					var complexResult = this._controlComplexSocket.Receive(this.Encoding);
 					if (!complexResult.Success)
 					{
 						return false;
@@ -225,21 +351,12 @@ namespace sharpLightFtp
 						port = (p1 << 8) + p2;
 					}
 
-					var transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
-					connected = transferComplexSocket.ConnectToTransferSocket();
-					if (!connected)
-					{
-						transferComplexSocket.IsFailed = true;
-					}
-
-					this._transferComplexSocket = transferComplexSocket;
+					this._transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
 				}
 
 			}
 
-			var isFailed = this._transferComplexSocket.IsFailed;
-			
-			return !isFailed;
+			return true;
 		}
 	}
 }
