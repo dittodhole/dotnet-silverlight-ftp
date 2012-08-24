@@ -118,19 +118,21 @@ namespace sharpLightFtp
 		{
 			foreach (var p in FtpListFormatParser.Parsers.Value)
 			{
-				if (p.Parse(listing))
+				if (!p.Parse(listing))
 				{
-					this.Type = p.ObjectType;
-					this.Name = p.Name;
-					this.Size = p.Size;
-					this.Modify = p.Modify;
-					this.Mode = p.Mode;
-					this.Owner = p.Owner;
-					this.LinkPath = p.LinkPath;
-					this.Group = p.Group;
-
-					return;
+					continue;
 				}
+
+				this.Type = p.ObjectType;
+				this.Name = p.Name;
+				this.Size = p.Size;
+				this.Modify = p.Modify;
+				this.Mode = p.Mode;
+				this.Owner = p.Owner;
+				this.LinkPath = p.LinkPath;
+				this.Group = p.Group;
+
+				break;
 			}
 		}
 
@@ -141,8 +143,8 @@ namespace sharpLightFtp
 		private void ParseMachineListing(string listing)
 		{
 			var matches = new List<string>();
-			var re = new Regex(@"(.+?)=(.*?);|  ?(.+?)$");
-			Match m;
+			var regularExpression = new Regex(@"(.+?)=(.*?);|  ?(.+?)$");
+			Match match;
 
 			if (Regex.Match(listing, "^[0-9]+").Success)
 			{
@@ -150,98 +152,101 @@ namespace sharpLightFtp
 				return;
 			}
 
-			if ((m = re.Match(listing)).Success)
+			if ((match = regularExpression.Match(listing)).Success)
 			{
 				do
 				{
 					matches.Clear();
 
-					for (var i = 1; i < m.Groups.Count; i++)
+					for (var i = 1; i < match.Groups.Count; i++)
 					{
-						if (m.Groups[i].Success)
+						var group = match.Groups[i];
+						if (group.Success)
 						{
-							matches.Add(m.Groups[i].Value);
+							matches.Add(group.Value);
 						}
 					}
 
 					var key = matches[0];
-					if (matches.Count == 2)
+					if (matches.Count != 2)
 					{
-						// key=value pair
-						var value = matches[1];
-						switch (key.Trim().ToLower())
+						if (matches.Count == 1
+						    && this.Name == null)
 						{
-							case "type":
-								switch (this.Type)
-								{
-									case FtpObjectType.Unknown:
-										var lower = value.ToLower();
-										if (lower == "file")
-										{
-											this.Type = FtpObjectType.File;
-										}
-										else if (lower.Contains("os.unix=slink"))
-										{
-											this.Type = FtpObjectType.Link;
-											this.LinkPath = value.Substring(value.LastIndexOf(':'));
-										}
-										else if (lower == "dir" || lower == "cdir"
-										         || lower == "pdir")
-										{
-											this.Type = FtpObjectType.Directory;
-										}
-										break;
-								}
-								break;
-							case "size":
-								if (this.Size
-								    == -1)
-								{
-									this.Size = long.Parse(value);
-								}
-								break;
-							case "modify":
-								if (this.Modify
-								    == DateTime.MinValue)
-								{
-									DateTime tmodify;
-									var formats = new[]
-									{
-										"yyyyMMddHHmmss", "yyyyMMddHHmmss.fff"
-									};
-									if (DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out tmodify))
-									{
-										this.Modify = tmodify;
-									}
-								}
-								break;
-							case "unix.mode":
-								if (this.Mode == "0000")
-								{
-									this.Mode = value;
-								}
-								break;
-							case "unix.owner":
-								if (this.Owner == null)
-								{
-									this.Owner = value;
-								}
-								break;
-							case "unix.group":
-								if (this.Group == null)
-								{
-									this.Group = value;
-								}
-								break;
+							// filename
+							this.Name = key;
 						}
+						continue;
 					}
-					else if (matches.Count == 1
-					         && this.Name == null)
+
+					// key=value pair
+					var value = matches[1];
+					switch (key.Trim().ToLower())
 					{
-						// filename
-						this.Name = key;
+						case "type":
+							switch (this.Type)
+							{
+								case FtpObjectType.Unknown:
+									var lower = value.ToLower();
+									if (lower == "file")
+									{
+										this.Type = FtpObjectType.File;
+									}
+									else if (lower.Contains("os.unix=slink"))
+									{
+										this.Type = FtpObjectType.Link;
+										this.LinkPath = value.Substring(value.LastIndexOf(':'));
+									}
+									else if (lower == "dir" || lower == "cdir"
+									         || lower == "pdir")
+									{
+										this.Type = FtpObjectType.Directory;
+									}
+									break;
+							}
+							break;
+						case "size":
+							if (this.Size
+							    == -1)
+							{
+								this.Size = long.Parse(value);
+							}
+							break;
+						case "modify":
+							if (this.Modify
+							    == DateTime.MinValue)
+							{
+								DateTime tmodify;
+								var formats = new[]
+								{
+									"yyyyMMddHHmmss", "yyyyMMddHHmmss.fff"
+								};
+								if (DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out tmodify))
+								{
+									this.Modify = tmodify;
+								}
+							}
+							break;
+						case "unix.mode":
+							if (this.Mode == "0000")
+							{
+								this.Mode = value;
+							}
+							break;
+						case "unix.owner":
+							if (this.Owner == null)
+							{
+								this.Owner = value;
+							}
+							break;
+						case "unix.group":
+							if (this.Group == null)
+							{
+								this.Group = value;
+							}
+							break;
 					}
-				} while ((m = m.NextMatch()).Success);
+				} while ((match = match.NextMatch()).Success);
 			}
 		}
 
