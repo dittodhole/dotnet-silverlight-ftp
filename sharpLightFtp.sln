@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharpLightFtp", "sharpLightFtp.csproj", "{AEB3DA47-5A6C-438C-B863-D9754F62AFBF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharpLightFtp", "sharpLightFtp\sharpLightFtp.csproj", "{AEB3DA47-5A6C-438C-B863-D9754F62AFBF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharpLightFtp.Demo", "..\sharpLightFtp.Demo\sharpLightFtp.Demo.csproj", "{7A732F6F-543F-4CB1-9C99-9CC04A4E0AA7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharpLightFtp.Demo", "sharpLightFtp.Demo\sharpLightFtp.Demo.csproj", "{7A732F6F-543F-4CB1-9C99-9CC04A4E0AA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharpLightFtp.Demo.Web", "..\sharpLightFtp.Demo.Web\sharpLightFtp.Demo.Web.csproj", "{B06AB9B3-7EE2-4C6A-AD38-FE1D38F46325}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharpLightFtp.Demo.Web", "sharpLightFtp.Demo.Web\sharpLightFtp.Demo.Web.csproj", "{B06AB9B3-7EE2-4C6A-AD38-FE1D38F46325}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
