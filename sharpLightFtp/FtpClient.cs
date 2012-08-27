@@ -13,12 +13,10 @@ namespace sharpLightFtp
 	                                IDisposable
 	{
 		private readonly object _lockControlComplexSocket = new object();
-		private readonly object _lockTransferComplexSocket = new object();
 		private readonly Type _typeOfFtpFeatures = typeof (FtpFeatures);
 		private ComplexSocket _controlComplexSocket;
 		private FtpFeatures _features = FtpFeatures.EMPTY;
 		private int _port;
-		private ComplexSocket _transferComplexSocket;
 
 		public FtpClient(string username, string password, string server, int port)
 			: this(username, password, server)
@@ -83,13 +81,6 @@ namespace sharpLightFtp
 					controlComplexSocket.Dispose();
 				}
 			}
-			{
-				var transferComplexSocket = this._transferComplexSocket;
-				if (transferComplexSocket != null)
-				{
-					transferComplexSocket.Dispose();
-				}
-			}
 		}
 
 		#endregion
@@ -131,64 +122,78 @@ namespace sharpLightFtp
 
 			lock (this._lockControlComplexSocket)
 			{
-				lock (this._lockTransferComplexSocket)
+				string command;
+				switch (ftpListType)
 				{
-					string command;
-					switch (ftpListType)
-					{
-						case FtpListType.MLST:
-							command = "MLST";
-							break;
-						case FtpListType.LIST:
-							command = "LIST";
-							break;
-						case FtpListType.MLSD:
-							command = "MLSD";
-							break;
-						default:
-							throw new NotImplementedException();
-					}
+					case FtpListType.MLST:
+						command = "MLST";
+						break;
+					case FtpListType.LIST:
+						command = "LIST";
+						break;
+					case FtpListType.MLSD:
+						command = "MLSD";
+						break;
+					default:
+						throw new NotImplementedException();
+				}
 
-					var concreteCommand = string.Format("{0} {1}", command, path);
+				var concreteCommand = string.Format("{0} {1}", command, path);
 
-					if (this._features.HasFlag(FtpFeatures.PRET))
+				if (this._features.HasFlag(FtpFeatures.PRET))
+				{
+					// On servers that advertise PRET (DrFTPD), the PRET command must be executed before a passive connection is opened.
 					{
 						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
 						{
 							Command = string.Format("PRET {0}", concreteCommand)
 						};
-						{
-							var success = complexFtpCommand.Send();
-							if (!success)
-							{
-								return Enumerable.Empty<string>();
-							}
-						}
-						complexResult = this._controlComplexSocket.Receive(this.Encoding);
-						if (!complexResult.Success)
+						var success = complexFtpCommand.Send();
+						if (!success)
 						{
 							return Enumerable.Empty<string>();
 						}
 					}
-
 					{
+						complexResult = this._controlComplexSocket.Receive(this.Encoding);
+						var success = complexResult.Success;
+						if (!success)
+						{
+							return Enumerable.Empty<string>();
+						}
+					}
+				}
+
+				ComplexSocket transferComplexSocket;
+				{
+					transferComplexSocket = this.SetPassive();
+					if (transferComplexSocket == null)
+					{
+						return Enumerable.Empty<string>();
+					}
+				}
+				using (transferComplexSocket)
+				{
+					{
+						// send LIST/MLSD/MLST-command via control socket
 						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
 						{
 							Command = concreteCommand
 						};
+						var success = complexFtpCommand.Send();
+						if (!success)
 						{
-							var success = complexFtpCommand.Send();
-							if (!success)
-							{
-								return Enumerable.Empty<string>();
-							}
-							var connected = this._transferComplexSocket.Connect();
-							if (!connected)
-							{
-								return Enumerable.Empty<string>();
-							}
-							complexResult = this._transferComplexSocket.Receive(this.Encoding);
+							return Enumerable.Empty<string>();
 						}
+					}
+					{
+						// receive listing via transfer socket
+						var connected = transferComplexSocket.Connect();
+						if (!connected)
+						{
+							return Enumerable.Empty<string>();
+						}
+						complexResult = transferComplexSocket.Receive(this.Encoding);
 					}
 				}
 			}
@@ -198,11 +203,9 @@ namespace sharpLightFtp
 			return messages;
 		}
 
-		public bool Upload(Stream stream, string remoteFile)
+		public bool CreateDirectory(string path)
 		{
-			Contract.Requires(stream != null);
-			Contract.Requires(stream.CanRead);
-			Contract.Requires(!string.IsNullOrWhiteSpace(remoteFile));
+			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
 			{
 				var success = this.BasicConnect();
@@ -212,58 +215,144 @@ namespace sharpLightFtp
 				}
 			}
 
-			ComplexResult complexResult;
+			lock (this._controlComplexSocket)
+			{
+				var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+				{
+					Command = string.Format("MKD {0}", path)
+				};
+				{
+					var success = complexFtpCommand.Send();
+					if (!success)
+					{
+						return false;
+					}
+				}
+				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
+				{
+					var success = complexResult.Success;
+					if (!success)
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
+		}
+
+		public bool Upload(Stream stream, FtpFile ftpFile)
+		{
+			Contract.Requires(stream != null);
+			Contract.Requires(stream.CanRead);
+			Contract.Requires(ftpFile != null);
+
+			{
+				var success = this.BasicConnect();
+				if (!success)
+				{
+					return false;
+				}
+			}
 
 			lock (this._lockControlComplexSocket)
 			{
-				lock (this._lockTransferComplexSocket)
 				{
-					// TODO cope with directories
-					var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+					var hierarchy = ftpFile.GetHierarchy().Reverse();
+
+					foreach (var element in hierarchy)
 					{
-						Command = string.Format("STOR {0}", remoteFile)
-					};
-					{
+						changeWorkingDirectory:
+						var name = element.Name;
+						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+						{
+							Command = string.Format("CWD {0}", name)
+						};
 						var success = complexFtpCommand.Send();
 						if (!success)
 						{
 							return false;
 						}
+						var complexResult = this._controlComplexSocket.Receive(this.Encoding);
+						success = complexResult.Success;
+						if (!success)
+						{
+							success = this.CreateDirectory(name);
+							if (!success)
+							{
+								return false;
+							}
+
+							goto changeWorkingDirectory;
+						}
 					}
-					var connected = this._transferComplexSocket.Connect();
-					if (!connected)
+				}
+
+				ComplexSocket transferComplexSocket;
+				{
+					transferComplexSocket = this.SetPassive();
+					if (transferComplexSocket == null)
 					{
 						return false;
 					}
-
-					using (var transferSocket = this._transferComplexSocket.Socket)
+				}
+				using (transferComplexSocket)
+				{
 					{
-						var buffer = new byte[transferSocket.SendBufferSize];
-						int read;
-						while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+						// sending STOR-command via control socket
+						var fileName = ftpFile.Name;
+						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
 						{
-							var socketEventArgs = this._transferComplexSocket.EndPoint.GetSocketEventArgs();
-							socketEventArgs.SetBuffer(buffer, 0, read);
-							transferSocket.SendAsync(socketEventArgs);
-
-							socketEventArgs.AutoResetEvent.WaitOne();
-
-							var exception = socketEventArgs.ConnectByNameError;
-							if (exception != null)
+							Command = string.Format("STOR {0}", fileName)
+						};
+						{
+							var success = complexFtpCommand.Send();
+							if (!success)
 							{
 								return false;
 							}
 						}
 					}
+					{
+						// sending content via transfer socket
+						var connected = transferComplexSocket.Connect();
+						if (!connected)
+						{
+							return false;
+						}
 
-					complexResult = this._controlComplexSocket.Receive(this.Encoding);
+						var transferSocket = transferComplexSocket.Socket;
+						{
+							var buffer = new byte[transferSocket.SendBufferSize];
+							int read;
+							while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+							{
+								var socketEventArgs = transferComplexSocket.EndPoint.GetSocketEventArgs();
+								socketEventArgs.SetBuffer(buffer, 0, read);
+								transferSocket.SendAsync(socketEventArgs);
+
+								socketEventArgs.AutoResetEvent.WaitOne();
+
+								var exception = socketEventArgs.ConnectByNameError;
+								if (exception != null)
+								{
+									return false;
+								}
+							}
+						}
+					}
 				}
-			}
+				{
+					// receiving STOR-response via control socket
+					var complexResult = this._controlComplexSocket.Receive(this.Encoding);
+					if (complexResult.FtpResponseType == FtpResponseType.PositiveIntermediate)
+					{
+						complexResult = this._controlComplexSocket.Receive(this.Encoding);
+					}
+					var success = complexResult.Success;
 
-			{
-				var success = complexResult.Success;
-
-				return success;
+					return success;
+				}
 			}
 		}
 
@@ -273,7 +362,6 @@ namespace sharpLightFtp
 			{
 				queue.Enqueue(this.EnsureConnection);
 				queue.Enqueue(this.EnsureFeatures);
-				queue.Enqueue(this.SetPassive);
 			}
 
 			var success = ExecuteQueue(queue);
@@ -342,16 +430,15 @@ namespace sharpLightFtp
 				{
 					Command = "FEAT"
 				};
+				var success = complexFtpCommand.Send();
+				if (!success)
 				{
-					var success = complexFtpCommand.Send();
-					if (!success)
-					{
-						return false;
-					}
+					return false;
 				}
 
 				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
-				if (!complexResult.Success)
+				success = complexResult.Success;
+				if (!success)
 				{
 					return false;
 				}
@@ -384,92 +471,85 @@ namespace sharpLightFtp
 			return true;
 		}
 
-		private bool SetPassive()
+		private ComplexSocket SetPassive()
 		{
 			lock (this._lockControlComplexSocket)
 			{
 				var connected = this.EnsureConnection();
 				if (!connected)
 				{
-					return false;
+					return null;
 				}
 
-				lock (this._lockTransferComplexSocket)
+				var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
 				{
-					if (this._transferComplexSocket != null)
+					Command = "PASV"
+				};
+				{
+					var success = complexFtpCommand.Send();
+					if (!success)
 					{
-						// TODO how does this behave in a multi-command-scenario? I do not think, that this is correct!
-						return false;
+						return null;
 					}
-
-					var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
-					{
-						Command = "PASV"
-					};
-					{
-						var success = complexFtpCommand.Send();
-						if (!success)
-						{
-							return false;
-						}
-					}
-
-					var complexResult = this._controlComplexSocket.Receive(this.Encoding);
-					if (!complexResult.Success)
-					{
-						return false;
-					}
-
-					var matches = Regex.Match(complexResult.ResponseMessage, "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
-					if (!matches.Success)
-					{
-						return false;
-					}
-					if (matches.Groups.Count != 7)
-					{
-						return false;
-					}
-
-					var octets = new byte[4];
-					for (var i = 1; i <= 4; i++)
-					{
-						var value = matches.Groups[i].Value;
-						byte octet;
-						if (!byte.TryParse(value, out octet))
-						{
-							return false;
-						}
-						octets[i - 1] = octet;
-					}
-
-					var ipAddress = new IPAddress(octets);
-					int port;
-					{
-						int p1;
-						{
-							var value = matches.Groups[5].Value;
-							if (!int.TryParse(value, out p1))
-							{
-								return false;
-							}
-						}
-						int p2;
-						{
-							var value = matches.Groups[6].Value;
-							if (!int.TryParse(value, out p2))
-							{
-								return false;
-							}
-						}
-						//port = p1 * 256 + p2;
-						port = (p1 << 8) + p2;
-					}
-
-					this._transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
 				}
-			}
 
-			return true;
+				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
+				{
+					var success = complexResult.Success;
+					if (!success)
+					{
+						return null;
+					}
+				}
+
+				var matches = Regex.Match(complexResult.ResponseMessage, "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
+				if (!matches.Success)
+				{
+					return null;
+				}
+				if (matches.Groups.Count != 7)
+				{
+					return null;
+				}
+
+				var octets = new byte[4];
+				for (var i = 1; i <= 4; i++)
+				{
+					var value = matches.Groups[i].Value;
+					byte octet;
+					if (!byte.TryParse(value, out octet))
+					{
+						return null;
+					}
+					octets[i - 1] = octet;
+				}
+
+				var ipAddress = new IPAddress(octets);
+				int port;
+				{
+					int p1;
+					{
+						var value = matches.Groups[5].Value;
+						if (!int.TryParse(value, out p1))
+						{
+							return null;
+						}
+					}
+					int p2;
+					{
+						var value = matches.Groups[6].Value;
+						if (!int.TryParse(value, out p2))
+						{
+							return null;
+						}
+					}
+					//port = p1 * 256 + p2;
+					port = (p1 << 8) + p2;
+				}
+
+				var transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
+				return transferComplexSocket;
+			}
 		}
 	}
 }

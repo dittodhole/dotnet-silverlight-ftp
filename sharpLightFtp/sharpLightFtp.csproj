@@ -68,14 +68,17 @@
     <Compile Include="Extensions\ComplexFtpCommandExtensions.cs" />
     <Compile Include="Extensions\ComplexSocketExtensions.cs" />
     <Compile Include="Extensions\EndPointExtensions.cs" />
+    <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
     <Compile Include="FtpClient.cs" />
     <Compile Include="Extensions\FtpClientExtensions.cs" />
     <Compile Include="FtpClientBase.cs" />
+    <Compile Include="FtpDirectory.cs" />
+    <Compile Include="FtpFile.cs" />
+    <Compile Include="FtpFileSystemObject.cs" />
     <Compile Include="FtpListFormatParser.cs" />
     <Compile Include="FtpListItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
-    <Compile Include="EventArgs\SocketCompletedEventArgs.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="System.Net.FtpClient.licence.txt" />

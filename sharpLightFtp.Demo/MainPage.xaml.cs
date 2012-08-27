@@ -30,7 +30,7 @@ namespace sharpLightFtp.Demo
 				using (ftpClient)
 				{
 					var ftpListItems = ftpClient.GetListing("/");
-					Dispatcher.BeginInvoke(() =>
+					this.Dispatcher.BeginInvoke(() =>
 					{
 						var messageBoxText = string.Format("success: {0}", ftpListItems.Count());
 						MessageBox.Show(messageBoxText);
@@ -46,7 +46,7 @@ namespace sharpLightFtp.Demo
 			{
 				var value = "hallo ich bin's ... wer bist'n du??";
 				var bytes = Encoding.UTF8.GetBytes(value);
-				var remotePath = "hello.txt";
+				var ftpFile = new FtpFile("/test12/hello.txt");
 
 				using (ftpClient)
 				{
@@ -54,9 +54,9 @@ namespace sharpLightFtp.Demo
 					var memoryStream = new MemoryStream(bytes);
 					using (memoryStream)
 					{
-						success = ftpClient.Upload(memoryStream, remotePath);
+						success = ftpClient.Upload(memoryStream, ftpFile);
 					}
-					Dispatcher.BeginInvoke(() =>
+					this.Dispatcher.BeginInvoke(() =>
 					{
 						var messageBoxText = string.Format("success: {0}", success);
 						MessageBox.Show(messageBoxText);
