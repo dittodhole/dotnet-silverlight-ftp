@@ -52,6 +52,14 @@ namespace sharpLightFtp
 
 		internal bool IsFailed { get; set; }
 
+		internal bool Connected
+		{
+			get
+			{
+				return this._socket.Connected;
+			}
+		}
+
 		#region IDisposable Members
 
 		public void Dispose()

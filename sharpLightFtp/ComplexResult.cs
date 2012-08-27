@@ -1,17 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using sharpLightFtp.EventArgs;
+﻿using System.Collections.Generic;
 
 namespace sharpLightFtp
 {
-	internal sealed class ComplexResult : IDisposable
+	internal sealed class ComplexResult
 	{
 		private readonly FtpResponseType _ftpResponseType;
 		private readonly List<string> _messages = new List<string>();
 		private readonly string _responseCode;
 		private readonly string _responseMessage;
-
-		internal SocketEventArgs SocketAsyncEventArgs;
 
 		internal ComplexResult(FtpResponseType ftpResponseType, string responseCode, string responseMessage, IEnumerable<string> messages)
 		{
@@ -68,18 +64,5 @@ namespace sharpLightFtp
 				}
 			}
 		}
-
-		#region IDisposable Members
-
-		public void Dispose()
-		{
-			var socketAsyncEventArgs = this.SocketAsyncEventArgs;
-			if (socketAsyncEventArgs != null)
-			{
-				socketAsyncEventArgs.Dispose();
-			}
-		}
-
-		#endregion
 	}
 }

@@ -27,13 +27,15 @@ namespace sharpLightFtp.Demo
 			var ftpClient = this.GetFtpClient();
 			ThreadPool.QueueUserWorkItem(callBack =>
 			{
-				//var success = ftpClient.GetFeatures();
-				var ftpListItems = ftpClient.GetListing("/");
-				Dispatcher.BeginInvoke(() =>
+				using (ftpClient)
 				{
-					var messageBoxText = string.Format("success: {0}", ftpListItems.Count());
-					MessageBox.Show(messageBoxText);
-				});
+					var ftpListItems = ftpClient.GetListing("/");
+					Dispatcher.BeginInvoke(() =>
+					{
+						var messageBoxText = string.Format("success: {0}", ftpListItems.Count());
+						MessageBox.Show(messageBoxText);
+					});
+				}
 			});
 		}
 
@@ -44,14 +46,22 @@ namespace sharpLightFtp.Demo
 			{
 				var value = "hallo ich bin's ... wer bist'n du??";
 				var bytes = Encoding.UTF8.GetBytes(value);
-				var memoryStream = new MemoryStream(bytes);
 				var remotePath = "hello.txt";
-				var success = ftpClient.Upload(memoryStream, remotePath);
-				Dispatcher.BeginInvoke(() =>
+
+				using (ftpClient)
 				{
-					var messageBoxText = string.Format("success: {0}", success);
-					MessageBox.Show(messageBoxText);
-				});
+					bool success;
+					var memoryStream = new MemoryStream(bytes);
+					using (memoryStream)
+					{
+						success = ftpClient.Upload(memoryStream, remotePath);
+					}
+					Dispatcher.BeginInvoke(() =>
+					{
+						var messageBoxText = string.Format("success: {0}", success);
+						MessageBox.Show(messageBoxText);
+					});
+				}
 			});
 		}
 

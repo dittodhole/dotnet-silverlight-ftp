@@ -4,21 +4,21 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
-	public sealed class FtpClient : FtpClientBase
+	public sealed class FtpClient : FtpClientBase,
+	                                IDisposable
 	{
 		private readonly object _lockControlComplexSocket = new object();
 		private readonly object _lockTransferComplexSocket = new object();
 		private readonly Type _typeOfFtpFeatures = typeof (FtpFeatures);
 		private ComplexSocket _controlComplexSocket;
-		private ComplexSocket _transferComplexSocket;
 		private FtpFeatures _features = FtpFeatures.EMPTY;
 		private int _port;
+		private ComplexSocket _transferComplexSocket;
 
 		public FtpClient(string username, string password, string server, int port)
 			: this(username, password, server)
@@ -72,6 +72,28 @@ namespace sharpLightFtp
 			}
 		}
 
+		#region IDisposable Members
+
+		public void Dispose()
+		{
+			{
+				var controlComplexSocket = this._controlComplexSocket;
+				if (controlComplexSocket != null)
+				{
+					controlComplexSocket.Dispose();
+				}
+			}
+			{
+				var transferComplexSocket = this._transferComplexSocket;
+				if (transferComplexSocket != null)
+				{
+					transferComplexSocket.Dispose();
+				}
+			}
+		}
+
+		#endregion
+
 		public IEnumerable<FtpListItem> GetListing(string path)
 		{
 			FtpListType ftpListType;
@@ -104,7 +126,7 @@ namespace sharpLightFtp
 					return Enumerable.Empty<string>();
 				}
 			}
-			
+
 			ComplexResult complexResult;
 
 			lock (this._lockControlComplexSocket)
@@ -135,10 +157,12 @@ namespace sharpLightFtp
 						{
 							Command = string.Format("PRET {0}", concreteCommand)
 						};
-						var success = complexFtpCommand.Send();
-						if (!success)
 						{
-							return Enumerable.Empty<string>();
+							var success = complexFtpCommand.Send();
+							if (!success)
+							{
+								return Enumerable.Empty<string>();
+							}
 						}
 						complexResult = this._controlComplexSocket.Receive(this.Encoding);
 						if (!complexResult.Success)
@@ -152,7 +176,6 @@ namespace sharpLightFtp
 						{
 							Command = concreteCommand
 						};
-						using (complexFtpCommand)
 						{
 							var success = complexFtpCommand.Send();
 							if (!success)
@@ -200,43 +223,40 @@ namespace sharpLightFtp
 					{
 						Command = string.Format("STOR {0}", remoteFile)
 					};
-					using (complexFtpCommand)
 					{
 						var success = complexFtpCommand.Send();
 						if (!success)
 						{
 							return false;
 						}
+					}
+					var connected = this._transferComplexSocket.Connect();
+					if (!connected)
+					{
+						return false;
+					}
+
+					using (var transferSocket = this._transferComplexSocket.Socket)
+					{
+						var buffer = new byte[transferSocket.SendBufferSize];
+						int read;
+						while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
 						{
-							var connected = this._transferComplexSocket.Connect();
-							if (!connected)
+							var socketEventArgs = this._transferComplexSocket.EndPoint.GetSocketEventArgs();
+							socketEventArgs.SetBuffer(buffer, 0, read);
+							transferSocket.SendAsync(socketEventArgs);
+
+							socketEventArgs.AutoResetEvent.WaitOne();
+
+							var exception = socketEventArgs.ConnectByNameError;
+							if (exception != null)
 							{
 								return false;
 							}
-
-							using (var transferSocket = this._transferComplexSocket.Socket)
-							{
-								var buffer = new byte[transferSocket.SendBufferSize];
-								int read;
-								while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-								{
-									var socketEventArgs = this._transferComplexSocket.EndPoint.GetSocketEventArgs();
-									socketEventArgs.SetBuffer(buffer, 0, read);
-									transferSocket.SendAsync(socketEventArgs);
-
-									socketEventArgs.AutoResetEvent.WaitOne();
-
-									var exception = socketEventArgs.ConnectByNameError;
-									if (exception != null)
-									{
-										return false;
-									}
-								}
-							}
 						}
-
-						complexResult = this._controlComplexSocket.Receive(this.Encoding);
 					}
+
+					complexResult = this._controlComplexSocket.Receive(this.Encoding);
 				}
 			}
 
@@ -265,7 +285,14 @@ namespace sharpLightFtp
 		{
 			lock (this._lockControlComplexSocket)
 			{
-				if (this._controlComplexSocket == null)
+				if (this._controlComplexSocket != null)
+				{
+					if (this._controlComplexSocket.Connected)
+					{
+						return true;
+					}
+				}
+				else
 				{
 					var controlComplexSocket = this.GetControlComplexSocket();
 					var queue = new Queue<Func<bool>>();
@@ -315,10 +342,12 @@ namespace sharpLightFtp
 				{
 					Command = "FEAT"
 				};
-				var success = complexFtpCommand.Send();
-				if (!success)
 				{
-					return false;
+					var success = complexFtpCommand.Send();
+					if (!success)
+					{
+						return false;
+					}
 				}
 
 				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
@@ -369,6 +398,7 @@ namespace sharpLightFtp
 				{
 					if (this._transferComplexSocket != null)
 					{
+						// TODO how does this behave in a multi-command-scenario? I do not think, that this is correct!
 						return false;
 					}
 
@@ -376,11 +406,14 @@ namespace sharpLightFtp
 					{
 						Command = "PASV"
 					};
-					var success = complexFtpCommand.Send();
-					if (!success)
 					{
-						return false;
+						var success = complexFtpCommand.Send();
+						if (!success)
+						{
+							return false;
+						}
 					}
+
 					var complexResult = this._controlComplexSocket.Receive(this.Encoding);
 					if (!complexResult.Success)
 					{
@@ -434,7 +467,6 @@ namespace sharpLightFtp
 
 					this._transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
 				}
-
 			}
 
 			return true;

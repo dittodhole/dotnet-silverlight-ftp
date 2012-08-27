@@ -71,7 +71,6 @@
     <Compile Include="FtpClient.cs" />
     <Compile Include="Extensions\FtpClientExtensions.cs" />
     <Compile Include="FtpClientBase.cs" />
-    <Compile Include="FtpException.cs" />
     <Compile Include="FtpListFormatParser.cs" />
     <Compile Include="FtpListItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -79,7 +78,6 @@
     <Compile Include="EventArgs\SocketCompletedEventArgs.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ClientAccessPolicy.xml" />
     <Content Include="System.Net.FtpClient.licence.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Silverlight\$(SilverlightVersion)\Microsoft.Silverlight.CSharp.targets" />

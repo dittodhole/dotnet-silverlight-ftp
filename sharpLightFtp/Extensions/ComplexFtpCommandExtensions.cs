@@ -21,16 +21,19 @@ namespace sharpLightFtp.Extensions
 				var sendBuffer = encoding.GetBytes(command);
 				sendSocketEventArgs.SetBuffer(sendBuffer, 0, sendBuffer.Length);
 			}
-
-			var async = socket.SendAsync(sendSocketEventArgs);
-			if (async)
+			
+			using (sendSocketEventArgs)
 			{
-				sendSocketEventArgs.AutoResetEvent.WaitOne();
+				var async = socket.SendAsync(sendSocketEventArgs);
+				if (async)
+				{
+					sendSocketEventArgs.AutoResetEvent.WaitOne();
+				}
+
+				var exception = sendSocketEventArgs.ConnectByNameError;
+
+				return exception == null;
 			}
-
-			var exception = sendSocketEventArgs.ConnectByNameError;
-
-			return exception == null;
 		}
 	}
 }

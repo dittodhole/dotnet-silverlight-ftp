@@ -6,7 +6,7 @@ using System.Text;
 
 namespace sharpLightFtp
 {
-	internal sealed class ComplexFtpCommand : IDisposable
+	internal sealed class ComplexFtpCommand
 	{
 		private readonly ComplexSocket _complexSocket;
 		private readonly Encoding _encoding;
@@ -40,14 +40,5 @@ namespace sharpLightFtp
 				return this._encoding;
 			}
 		}
-
-		#region IDisposable Members
-
-		public void Dispose()
-		{
-			this.ComplexSocket.Dispose();
-		}
-
-		#endregion
 	}
 }
