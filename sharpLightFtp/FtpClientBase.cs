@@ -22,14 +22,17 @@ namespace sharpLightFtp
 			Contract.Requires(queue != null);
 			Contract.Requires(queue.Any());
 
-			bool success;
-			do
+			while (queue.Any())
 			{
 				var predicate = queue.Dequeue();
-				success = predicate.Invoke();
-			} while (queue.Any());
+				var success = predicate.Invoke();
+				if (!success)
+				{
+					return false;
+				}
+			}
 
-			return success;
+			return true;
 		}
 
 		internal static ComplexSocket GetTransferComplexSocket(IPAddress ipAddress, int port)
