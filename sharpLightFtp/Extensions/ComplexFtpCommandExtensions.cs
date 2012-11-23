@@ -15,9 +15,8 @@ namespace sharpLightFtp.Extensions
 			var sendBuffer = encoding.GetBytes(command);
 
 			var complexSocket = complexFtpCommand.ComplexSocket;
-			var endPoint = complexSocket.EndPoint;
 
-			using (var sendSocketEventArgs = endPoint.GetSocketEventArgs())
+			using (var sendSocketEventArgs = complexSocket.GetSocketEventArgs())
 			{
 				return sendSocketEventArgs.Send(sendBuffer, 0, sendBuffer.Length);
 			}

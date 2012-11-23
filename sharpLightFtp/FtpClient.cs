@@ -213,10 +213,10 @@ namespace sharpLightFtp
 				{
 					Command = string.Format("MKD {0}", path)
 				};
-				return complexFtpCommand.SendAndReceiveIsSuccess();
-			}
+				var success = complexFtpCommand.SendAndReceiveIsSuccess();
 
-			return true;
+				return success;
+			}
 		}
 
 		public bool Upload(Stream stream, FtpFile ftpFile)
@@ -294,14 +294,13 @@ namespace sharpLightFtp
 							return false;
 						}
 
-						var endPoint = transferComplexSocket.EndPoint;
 						var transferSocket = transferComplexSocket.Socket;
 						{
 							var buffer = new byte[transferSocket.SendBufferSize];
 							int read;
 							while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
 							{
-								using (var socketEventArgs = endPoint.GetSocketEventArgs())
+								using (var socketEventArgs = transferComplexSocket.GetSocketEventArgs())
 								{
 									return socketEventArgs.Send(buffer, 0, read);
 								}

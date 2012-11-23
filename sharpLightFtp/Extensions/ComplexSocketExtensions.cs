@@ -4,19 +4,20 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using sharpLightFtp.EventArgs;
 
 namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexSocketExtensions
 	{
+
 		internal static bool Connect(this ComplexSocket complexSocket)
 		{
 			Contract.Requires(complexSocket != null);
 
 			var socket = complexSocket.Socket;
-			var endPoint = complexSocket.EndPoint;
 
-			var sendSocketEventArgs = endPoint.GetSocketEventArgs();
+			var sendSocketEventArgs = complexSocket.GetSocketEventArgs();
 			using (sendSocketEventArgs)
 			{
 				var async = socket.ConnectAsync(sendSocketEventArgs);
@@ -39,7 +40,7 @@ namespace sharpLightFtp.Extensions
 
 			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
 			{
-				Command = string.Format("USER {0}", username)
+				Command = String.Format("USER {0}", username)
 			};
 			{
 				var success = complexFtpCommand.Send();
@@ -57,7 +58,7 @@ namespace sharpLightFtp.Extensions
 			{
 				complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
 				{
-					Command = string.Format("PASS {0}", password)
+					Command = String.Format("PASS {0}", password)
 				};
 				{
 					var success = complexFtpCommand.Send();
@@ -81,9 +82,8 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(complexSocket != null);
 
 			var socket = complexSocket.Socket;
-			var endPoint = complexSocket.EndPoint;
 
-			var receiveSocketEventArgs = endPoint.GetSocketEventArgs();
+			var receiveSocketEventArgs = complexSocket.GetSocketEventArgs();
 			{
 				var responseBuffer = new byte[socket.ReceiveBufferSize];
 				receiveSocketEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
@@ -91,8 +91,8 @@ namespace sharpLightFtp.Extensions
 
 			var ftpResponseType = FtpResponseType.None;
 			var messages = new List<string>();
-			var responseCode = string.Empty;
-			var responseMessage = string.Empty;
+			var responseCode = String.Empty;
+			var responseMessage = String.Empty;
 			var timeout = TimeSpan.FromSeconds(10);
 
 			using (receiveSocketEventArgs)
@@ -104,7 +104,7 @@ namespace sharpLightFtp.Extensions
 					var async = socket.ReceiveAsync(receiveSocketEventArgs);
 					executedInTime = !async || receiveSocketEventArgs.AutoResetEvent.WaitOne(timeout);
 					var data = receiveSocketEventArgs.GetData(encoding);
-					if (string.IsNullOrWhiteSpace(data))
+					if (String.IsNullOrWhiteSpace(data))
 					{
 						break;
 					}
@@ -122,7 +122,7 @@ namespace sharpLightFtp.Extensions
 							{
 								responseMessage = match.Groups[2].Value;
 							}
-							if (!string.IsNullOrWhiteSpace(responseCode))
+							if (!String.IsNullOrWhiteSpace(responseCode))
 							{
 								var firstCharacter = responseCode.First();
 								var character = firstCharacter.ToString();
@@ -143,6 +143,21 @@ namespace sharpLightFtp.Extensions
 			var complexResult = new ComplexResult(ftpResponseType, responseCode, responseMessage, messages);
 
 			return complexResult;
+		}
+
+		internal static SocketEventArgs GetSocketEventArgs(this ComplexSocket complexSocket)
+		{
+			Contract.Requires(complexSocket != null);
+
+			var socketEventArgs = new SocketEventArgs(complexSocket);
+			socketEventArgs.Completed += (sender, socketAsyncEventArgs) =>
+			{
+				var syncEventArgs = (SocketEventArgs) socketAsyncEventArgs;
+				syncEventArgs.AutoResetEvent.Set();
+				// sharpLightFtp.Extensions.ComplexFtpCommandExtensions.Send(this ComplexFtpCommand complexFtpCommand) is waiting for it
+			};
+
+			return socketEventArgs;
 		}
 	}
 }
