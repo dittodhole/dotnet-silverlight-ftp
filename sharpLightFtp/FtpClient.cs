@@ -148,15 +148,7 @@ namespace sharpLightFtp
 						{
 							Command = string.Format("PRET {0}", concreteCommand)
 						};
-						var success = complexFtpCommand.Send();
-						if (!success)
-						{
-							return Enumerable.Empty<string>();
-						}
-					}
-					{
-						complexResult = this._controlComplexSocket.Receive(this.Encoding);
-						var success = complexResult.Success;
+						var success = complexFtpCommand.SendAndReceiveIsSuccess();
 						if (!success)
 						{
 							return Enumerable.Empty<string>();
@@ -221,21 +213,7 @@ namespace sharpLightFtp
 				{
 					Command = string.Format("MKD {0}", path)
 				};
-				{
-					var success = complexFtpCommand.Send();
-					if (!success)
-					{
-						return false;
-					}
-				}
-				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
-				{
-					var success = complexResult.Success;
-					if (!success)
-					{
-						return false;
-					}
-				}
+				return complexFtpCommand.SendAndReceiveIsSuccess();
 			}
 
 			return true;
@@ -268,23 +246,18 @@ namespace sharpLightFtp
 						{
 							Command = string.Format("CWD {0}", name)
 						};
-						var success = complexFtpCommand.Send();
+						var success = complexFtpCommand.SendAndReceiveIsSuccess();
 						if (!success)
 						{
 							return false;
 						}
-						var complexResult = this._controlComplexSocket.Receive(this.Encoding);
-						success = complexResult.Success;
+						success = this.CreateDirectory(name);
 						if (!success)
 						{
-							success = this.CreateDirectory(name);
-							if (!success)
-							{
-								return false;
-							}
-
-							goto changeWorkingDirectory;
+							return false;
 						}
+
+						goto changeWorkingDirectory;
 					}
 				}
 
@@ -321,22 +294,16 @@ namespace sharpLightFtp
 							return false;
 						}
 
+						var endPoint = transferComplexSocket.EndPoint;
 						var transferSocket = transferComplexSocket.Socket;
 						{
 							var buffer = new byte[transferSocket.SendBufferSize];
 							int read;
 							while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
 							{
-								var socketEventArgs = transferComplexSocket.EndPoint.GetSocketEventArgs();
-								socketEventArgs.SetBuffer(buffer, 0, read);
-								transferSocket.SendAsync(socketEventArgs);
-
-								socketEventArgs.AutoResetEvent.WaitOne();
-
-								var exception = socketEventArgs.ConnectByNameError;
-								if (exception != null)
+								using (var socketEventArgs = endPoint.GetSocketEventArgs())
 								{
-									return false;
+									return socketEventArgs.Send(buffer, 0, read);
 								}
 							}
 						}
@@ -430,14 +397,8 @@ namespace sharpLightFtp
 				{
 					Command = "FEAT"
 				};
-				var success = complexFtpCommand.Send();
-				if (!success)
-				{
-					return false;
-				}
-
-				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
-				success = complexResult.Success;
+				ComplexResult complexResult;
+				var success = complexFtpCommand.SendAndReceiveIsSuccess(out complexResult);
 				if (!success)
 				{
 					return false;
@@ -481,21 +442,13 @@ namespace sharpLightFtp
 					return null;
 				}
 
-				var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+				ComplexResult complexResult;
 				{
-					Command = "PASV"
-				};
-				{
-					var success = complexFtpCommand.Send();
-					if (!success)
+					var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
 					{
-						return null;
-					}
-				}
-
-				var complexResult = this._controlComplexSocket.Receive(this.Encoding);
-				{
-					var success = complexResult.Success;
+						Command = "PASV"
+					};
+					var success = complexFtpCommand.SendAndReceiveIsSuccess(out complexResult);
 					if (!success)
 					{
 						return null;

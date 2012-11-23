@@ -19,8 +19,8 @@ namespace sharpLightFtp.Extensions
 			socketEventArgs.Completed += (sender, socketAsyncEventArgs) =>
 			{
 				var syncEventArgs = (SocketEventArgs) socketAsyncEventArgs;
-				var autoResetEvent = syncEventArgs.AutoResetEvent;
-				autoResetEvent.Set();
+				syncEventArgs.AutoResetEvent.Set();
+				// sharpLightFtp.Extensions.ComplexFtpCommandExtensions.Send(this ComplexFtpCommand complexFtpCommand) is waiting for it
 			};
 
 			return socketEventArgs;

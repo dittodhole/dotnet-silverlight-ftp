@@ -1,9 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace sharpLightFtp
 {
 	internal sealed class ComplexResult
 	{
+		internal static readonly ComplexResult FailedSendComplexResult = new ComplexResult(FtpResponseType.None, null, null, Enumerable.Empty<string>());
+
 		private readonly FtpResponseType _ftpResponseType;
 		private readonly List<string> _messages = new List<string>();
 		private readonly string _responseCode;

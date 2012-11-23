@@ -10,30 +10,47 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(complexFtpCommand != null);
 			Contract.Requires(!string.IsNullOrWhiteSpace(complexFtpCommand.Command));
 
-			var encoding = complexFtpCommand.Encoding;
 			var command = string.Concat(complexFtpCommand.Command, Environment.NewLine);
+			var encoding = complexFtpCommand.Encoding;
+			var sendBuffer = encoding.GetBytes(command);
+
 			var complexSocket = complexFtpCommand.ComplexSocket;
 			var endPoint = complexSocket.EndPoint;
-			var socket = complexSocket.Socket;
 
-			var sendSocketEventArgs = endPoint.GetSocketEventArgs();
+			using (var sendSocketEventArgs = endPoint.GetSocketEventArgs())
 			{
-				var sendBuffer = encoding.GetBytes(command);
-				sendSocketEventArgs.SetBuffer(sendBuffer, 0, sendBuffer.Length);
+				return sendSocketEventArgs.Send(sendBuffer, 0, sendBuffer.Length);
 			}
-			
-			using (sendSocketEventArgs)
+		}
+
+		internal static bool SendAndReceiveIsSuccess(this ComplexFtpCommand complexFtpCommand)
+		{
+			Contract.Requires(complexFtpCommand != null);
+
+			ComplexResult complexResult;
+			var success = complexFtpCommand.SendAndReceiveIsSuccess(out complexResult);
+
+			return success;
+		}
+
+		internal static bool SendAndReceiveIsSuccess(this ComplexFtpCommand complexFtpCommand, out ComplexResult complexResult)
+		{
+			Contract.Requires(complexFtpCommand != null);
+
+			var success = complexFtpCommand.Send();
+			if (!success)
 			{
-				var async = socket.SendAsync(sendSocketEventArgs);
-				if (async)
-				{
-					sendSocketEventArgs.AutoResetEvent.WaitOne();
-				}
-
-				var exception = sendSocketEventArgs.ConnectByNameError;
-
-				return exception == null;
+				complexResult = ComplexResult.FailedSendComplexResult;
+				return false;
 			}
+
+			var complexSocket = complexFtpCommand.ComplexSocket;
+			var encoding = complexFtpCommand.Encoding;
+
+			complexResult = complexSocket.Receive(encoding);
+			success = complexResult.Success;
+
+			return success;
 		}
 	}
 }
