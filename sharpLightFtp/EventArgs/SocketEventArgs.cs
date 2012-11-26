@@ -1,7 +1,7 @@
-﻿using System;
-using System.Diagnostics.Contracts;
+﻿using System.Diagnostics.Contracts;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace sharpLightFtp.EventArgs
@@ -9,8 +9,6 @@ namespace sharpLightFtp.EventArgs
 	public sealed class SocketEventArgs : SocketAsyncEventArgs
 	{
 		// TODO implement dispose for AutoResetEvent
-
-		private static readonly TimeSpan SendTimeout = TimeSpan.FromMinutes(5);
 
 		private readonly AutoResetEvent _autoResetEvent = new AutoResetEvent(false);
 		private readonly ComplexSocket _complexSocket;
@@ -21,7 +19,6 @@ namespace sharpLightFtp.EventArgs
 			Contract.Requires(complexSocket != null);
 
 			this._complexSocket = complexSocket;
-			this.RemoteEndPoint = this.EndPoint;
 		}
 
 		private SocketEventArgs()
@@ -61,21 +58,16 @@ namespace sharpLightFtp.EventArgs
 			}
 		}
 
-		public bool Send(byte[] buffer, int offset, int count)
+		public string GetData(Encoding encoding)
 		{
-			this.SetBuffer(buffer, offset, count);
-			var socket = this.Socket;
-			var async = socket.SendAsync(this); // TODO maybe create extensions for ComplexSocket
-			if (async)
-			{
-				this.AutoResetEvent.WaitOne(SendTimeout);
-			}
-			var exception = this.ConnectByNameError;
-			if (exception != null)
-			{
-				return false;
-			}
-			return true;
+			Contract.Requires(encoding != null);
+
+			var buffer = this.Buffer;
+			var offset = this.Offset;
+			var bytesTransferred = this.BytesTransferred;
+			var data = encoding.GetString(buffer, offset, bytesTransferred);
+
+			return data;
 		}
 	}
 }

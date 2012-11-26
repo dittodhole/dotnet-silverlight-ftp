@@ -118,8 +118,6 @@ namespace sharpLightFtp
 				}
 			}
 
-			ComplexResult complexResult;
-
 			lock (this._lockControlComplexSocket)
 			{
 				string command;
@@ -143,16 +141,11 @@ namespace sharpLightFtp
 				if (this._features.HasFlag(FtpFeatures.PRET))
 				{
 					// On servers that advertise PRET (DrFTPD), the PRET command must be executed before a passive connection is opened.
+					var complexResult = this._controlComplexSocket.SendAndReceive(this.Encoding, "PRET {0}", concreteCommand);
+					var success = complexResult.Success;
+					if (!success)
 					{
-						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
-						{
-							Command = string.Format("PRET {0}", concreteCommand)
-						};
-						var success = complexFtpCommand.SendAndReceiveIsSuccess();
-						if (!success)
-						{
-							return Enumerable.Empty<string>();
-						}
+						return Enumerable.Empty<string>();
 					}
 				}
 
@@ -168,11 +161,8 @@ namespace sharpLightFtp
 				{
 					{
 						// send LIST/MLSD/MLST-command via control socket
-						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
-						{
-							Command = concreteCommand
-						};
-						var success = complexFtpCommand.Send();
+						var complexResult = this._controlComplexSocket.SendAndReceive(this.Encoding, concreteCommand);
+						var success = complexResult.Success;
 						if (!success)
 						{
 							return Enumerable.Empty<string>();
@@ -185,14 +175,14 @@ namespace sharpLightFtp
 						{
 							return Enumerable.Empty<string>();
 						}
-						complexResult = transferComplexSocket.Receive(this.Encoding);
+
+						var complexResult = transferComplexSocket.Receive(this.Encoding);
+						var messages = complexResult.Messages;
+
+						return messages;
 					}
 				}
 			}
-
-			var messages = complexResult.Messages;
-
-			return messages;
 		}
 
 		public bool CreateDirectory(string path)
@@ -220,12 +210,8 @@ namespace sharpLightFtp
 
 			lock (this._controlComplexSocket)
 			{
-				var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
-				{
-					Command = string.Format("MKD {0}", path)
-				};
-
-				var success = complexFtpCommand.SendAndReceive(out complexResult);
+				complexResult = this._controlComplexSocket.SendAndReceive(this.Encoding, "MKD {0}", path);
+				var success = complexResult.Success;
 
 				return success;
 			}
@@ -252,14 +238,8 @@ namespace sharpLightFtp
 
 					foreach (var element in hierarchy)
 					{
-						changeWorkingDirectory: // yep, i know ... dirty, but effective
 						var name = element.Name;
-						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
-						{
-							Command = string.Format("CWD {0}", name)
-						};
-						ComplexResult complexResult;
-						complexFtpCommand.SendAndReceive(out complexResult);
+						var complexResult = this._controlComplexSocket.SendAndReceive(this.Encoding, "CWD {0}", name);
 						var ftpResponseType = complexResult.FtpResponseType;
 						switch (ftpResponseType)
 						{
@@ -280,29 +260,21 @@ namespace sharpLightFtp
 					}
 				}
 
-				ComplexSocket transferComplexSocket;
+				var transferComplexSocket = this.SetPassive();
+				if (transferComplexSocket == null)
 				{
-					transferComplexSocket = this.SetPassive();
-					if (transferComplexSocket == null)
-					{
-						return false;
-					}
+					return false;
 				}
+
 				using (transferComplexSocket)
 				{
 					{
 						// sending STOR-command via control socket
 						var fileName = ftpFile.Name;
-						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
+						var success = this._controlComplexSocket.Send(this.Encoding, "STOR {0}", fileName);
+						if (!success)
 						{
-							Command = string.Format("STOR {0}", fileName)
-						};
-						{
-							var success = complexFtpCommand.Send();
-							if (!success)
-							{
-								return false;
-							}
+							return false;
 						}
 					}
 					{
@@ -313,17 +285,10 @@ namespace sharpLightFtp
 							return false;
 						}
 
-						var transferSocket = transferComplexSocket.Socket;
+						var success = transferComplexSocket.Send(stream);
+						if (!success)
 						{
-							var buffer = new byte[transferSocket.SendBufferSize];
-							int read;
-							while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-							{
-								var socketEventArgs = transferComplexSocket.GetSocketEventArgs();
-								var success = socketEventArgs.Send(buffer, 0, read);
-
-								return success;
-							}
+							return false;
 						}
 					}
 				}
@@ -332,6 +297,7 @@ namespace sharpLightFtp
 					var complexResult = this._controlComplexSocket.Receive(this.Encoding);
 					if (complexResult.FtpResponseType == FtpResponseType.PositiveIntermediate)
 					{
+						// sometimes we are fast enough to catch the 3xx state ... yep, i know ... *face palm*
 						complexResult = this._controlComplexSocket.Receive(this.Encoding);
 					}
 					var success = complexResult.Success;
@@ -405,18 +371,13 @@ namespace sharpLightFtp
 				{
 					return false;
 				}
-				if (this._features
-				    != FtpFeatures.EMPTY)
+				if (this._features != FtpFeatures.EMPTY)
 				{
 					return true;
 				}
 
-				var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
-				{
-					Command = "FEAT"
-				};
-				ComplexResult complexResult;
-				var success = complexFtpCommand.SendAndReceive(out complexResult);
+				var complexResult = this._controlComplexSocket.SendAndReceive(this.Encoding, "FEAT");
+				var success = complexResult.Success;
 				if (!success)
 				{
 					return false;
@@ -460,17 +421,11 @@ namespace sharpLightFtp
 					return null;
 				}
 
-				ComplexResult complexResult;
+				var complexResult = this._controlComplexSocket.SendAndReceive(this.Encoding, "PASV");
+				var success = complexResult.Success;
+				if (!success)
 				{
-					var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
-					{
-						Command = "PASV"
-					};
-					var success = complexFtpCommand.SendAndReceive(out complexResult);
-					if (!success)
-					{
-						return null;
-					}
+					return null;
 				}
 
 				var matches = Regex.Match(complexResult.ResponseMessage, "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");

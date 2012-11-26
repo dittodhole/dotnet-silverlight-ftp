@@ -68,5 +68,14 @@ namespace sharpLightFtp
 		}
 
 		#endregion
+
+		internal byte[] GetReceiveBuffer()
+		{
+			var socket = this.Socket;
+			var receiveBufferSize = socket.ReceiveBufferSize;
+			var buffer = new byte[receiveBufferSize];
+
+			return buffer;
+		}
 	}
 }

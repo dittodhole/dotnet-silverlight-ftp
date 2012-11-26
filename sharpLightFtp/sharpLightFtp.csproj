@@ -86,12 +86,10 @@
     <Reference Include="System.Windows.Browser" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ComplexFtpCommand.cs" />
     <Compile Include="ComplexResult.cs" />
     <Compile Include="ComplexSocket.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="EventArgs\SocketEventArgs.cs" />
-    <Compile Include="Extensions\ComplexFtpCommandExtensions.cs" />
     <Compile Include="Extensions\ComplexSocketExtensions.cs" />
     <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
     <Compile Include="FtpClient.cs" />
@@ -103,7 +101,6 @@
     <Compile Include="FtpListFormatParser.cs" />
     <Compile Include="FtpListItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="System.Net.FtpClient.licence.txt" />
