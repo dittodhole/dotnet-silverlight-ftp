@@ -17,7 +17,7 @@ namespace sharpLightFtp
 			this._isControlSocket = isControlSocket;
 		}
 
-		internal ComplexSocket(Socket socket, EndPoint endPoint)
+		private ComplexSocket(Socket socket, EndPoint endPoint)
 		{
 			Contract.Requires(socket != null);
 			Contract.Requires(endPoint != null);

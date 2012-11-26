@@ -11,43 +11,21 @@ namespace sharpLightFtp.EventArgs
 		// TODO implement dispose for AutoResetEvent
 
 		private readonly AutoResetEvent _autoResetEvent = new AutoResetEvent(false);
-		private readonly ComplexSocket _complexSocket;
 
 		internal SocketEventArgs(ComplexSocket complexSocket)
+			: this(complexSocket.EndPoint) {}
+
+		public SocketEventArgs(EndPoint endPoint)
 			: this()
 		{
-			Contract.Requires(complexSocket != null);
+			Contract.Requires(endPoint != null);
 
-			this._complexSocket = complexSocket;
+			this.RemoteEndPoint = endPoint;
 		}
 
 		private SocketEventArgs()
 		{
 			this.SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http;
-		}
-
-		internal ComplexSocket ComplexSocket
-		{
-			get
-			{
-				return this._complexSocket;
-			}
-		}
-
-		public EndPoint EndPoint
-		{
-			get
-			{
-				return this.ComplexSocket.EndPoint;
-			}
-		}
-
-		public Socket Socket
-		{
-			get
-			{
-				return this.ComplexSocket.Socket;
-			}
 		}
 
 		public AutoResetEvent AutoResetEvent
