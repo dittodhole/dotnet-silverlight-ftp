@@ -12,14 +12,18 @@ namespace sharpLightFtp.Extensions
 		{
 			Contract.Requires(socketEventArgs != null);
 
-			return socketEventArgs.SocketError == SocketError.Success;
+			var success = socketEventArgs.SocketError == SocketError.Success;
+
+			return success;
 		}
 
 		internal static Exception GetException(this SocketEventArgs socketEventArgs)
 		{
 			Contract.Requires(socketEventArgs != null);
 
-			return socketEventArgs.ConnectByNameError;
+			var exception = socketEventArgs.ConnectByNameError;
+
+			return exception;
 		}
 
 		internal static string GetData(this SocketEventArgs socketEventArgs, Encoding encoding)

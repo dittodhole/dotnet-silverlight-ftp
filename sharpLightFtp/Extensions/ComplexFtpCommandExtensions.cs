@@ -18,7 +18,9 @@ namespace sharpLightFtp.Extensions
 
 			using (var sendSocketEventArgs = complexSocket.GetSocketEventArgs())
 			{
-				return sendSocketEventArgs.Send(sendBuffer, 0, sendBuffer.Length);
+				var success = sendSocketEventArgs.Send(sendBuffer, 0, sendBuffer.Length);
+
+				return success;
 			}
 		}
 
@@ -27,19 +29,19 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(complexFtpCommand != null);
 
 			ComplexResult complexResult;
-			var success = complexFtpCommand.SendAndReceiveIsSuccess(out complexResult);
+			var success = complexFtpCommand.SendAndReceive(out complexResult);
 
 			return success;
 		}
 
-		internal static bool SendAndReceiveIsSuccess(this ComplexFtpCommand complexFtpCommand, out ComplexResult complexResult)
+		internal static bool SendAndReceive(this ComplexFtpCommand complexFtpCommand, out ComplexResult complexResult)
 		{
 			Contract.Requires(complexFtpCommand != null);
 
 			var success = complexFtpCommand.Send();
 			if (!success)
 			{
-				complexResult = ComplexResult.FailedSendComplexResult;
+				complexResult = ComplexResult.FailedComplexResult;
 				return false;
 			}
 

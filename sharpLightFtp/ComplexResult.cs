@@ -5,14 +5,14 @@ namespace sharpLightFtp
 {
 	internal sealed class ComplexResult
 	{
-		internal static readonly ComplexResult FailedSendComplexResult = new ComplexResult(FtpResponseType.None, null, null, Enumerable.Empty<string>());
+		internal static readonly ComplexResult FailedComplexResult = new ComplexResult(FtpResponseType.None, 0, null, Enumerable.Empty<string>());
 
 		private readonly FtpResponseType _ftpResponseType;
 		private readonly List<string> _messages = new List<string>();
-		private readonly string _responseCode;
+		private readonly int _responseCode;
 		private readonly string _responseMessage;
 
-		internal ComplexResult(FtpResponseType ftpResponseType, string responseCode, string responseMessage, IEnumerable<string> messages)
+		internal ComplexResult(FtpResponseType ftpResponseType, int responseCode, string responseMessage, IEnumerable<string> messages)
 		{
 			this._ftpResponseType = ftpResponseType;
 			this._responseCode = responseCode;
@@ -20,7 +20,7 @@ namespace sharpLightFtp
 			this._messages.AddRange(messages);
 		}
 
-		internal string ResponseCode
+		internal int ResponseCode
 		{
 			get
 			{

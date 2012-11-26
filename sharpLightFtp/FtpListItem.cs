@@ -274,7 +274,9 @@ namespace sharpLightFtp
 				throw new NotImplementedException(message);
 			}
 
-			return this.Type != FtpObjectType.Unknown;
+			var success = this.Type != FtpObjectType.Unknown;
+
+			return success;
 		}
 
 		/// <summary>

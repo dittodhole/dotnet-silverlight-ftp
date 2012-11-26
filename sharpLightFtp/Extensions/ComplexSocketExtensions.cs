@@ -27,8 +27,9 @@ namespace sharpLightFtp.Extensions
 				}
 
 				var exception = sendSocketEventArgs.ConnectByNameError;
+				var success = exception == null;
 
-				return exception == null;
+				return success;
 			}
 		}
 
@@ -40,7 +41,7 @@ namespace sharpLightFtp.Extensions
 
 			var complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
 			{
-				Command = String.Format("USER {0}", username)
+				Command = string.Format("USER {0}", username)
 			};
 			{
 				var success = complexFtpCommand.Send();
@@ -58,7 +59,7 @@ namespace sharpLightFtp.Extensions
 			{
 				complexFtpCommand = new ComplexFtpCommand(complexSocket, encoding)
 				{
-					Command = String.Format("PASS {0}", password)
+					Command = string.Format("PASS {0}", password)
 				};
 				{
 					var success = complexFtpCommand.Send();
@@ -91,8 +92,9 @@ namespace sharpLightFtp.Extensions
 
 			var ftpResponseType = FtpResponseType.None;
 			var messages = new List<string>();
-			var responseCode = String.Empty;
-			var responseMessage = String.Empty;
+			var stringResponseCode = string.Empty;
+			var responseCode = 0;
+			var responseMessage = string.Empty;
 			var timeout = TimeSpan.FromSeconds(10);
 
 			using (receiveSocketEventArgs)
@@ -104,7 +106,7 @@ namespace sharpLightFtp.Extensions
 					var async = socket.ReceiveAsync(receiveSocketEventArgs);
 					executedInTime = !async || receiveSocketEventArgs.AutoResetEvent.WaitOne(timeout);
 					var data = receiveSocketEventArgs.GetData(encoding);
-					if (String.IsNullOrWhiteSpace(data))
+					if (string.IsNullOrWhiteSpace(data))
 					{
 						break;
 					}
@@ -116,18 +118,19 @@ namespace sharpLightFtp.Extensions
 						{
 							if (match.Groups.Count > 1)
 							{
-								responseCode = match.Groups[1].Value;
+								stringResponseCode = match.Groups[1].Value;
 							}
 							if (match.Groups.Count > 2)
 							{
 								responseMessage = match.Groups[2].Value;
 							}
-							if (!String.IsNullOrWhiteSpace(responseCode))
+							if (!string.IsNullOrWhiteSpace(stringResponseCode))
 							{
-								var firstCharacter = responseCode.First();
+								var firstCharacter = stringResponseCode.First();
 								var character = firstCharacter.ToString();
 								var intFtpResponseType = Convert.ToInt32(character);
 								ftpResponseType = (FtpResponseType) intFtpResponseType;
+								responseCode = int.Parse(stringResponseCode);
 							}
 						}
 						else

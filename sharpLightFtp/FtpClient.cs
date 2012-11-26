@@ -39,7 +39,7 @@ namespace sharpLightFtp
 		public FtpClient(Uri uri)
 		{
 			Contract.Requires(uri != null);
-			Contract.Requires(String.Equals(uri.Scheme, Uri.UriSchemeFtp));
+			Contract.Requires(string.Equals(uri.Scheme, Uri.UriSchemeFtp));
 
 			var uriBuilder = new UriBuilder(uri);
 
@@ -199,10 +199,21 @@ namespace sharpLightFtp
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
+			ComplexResult complexResult;
+			var success = this.CreateDirectoryInternal(path, out complexResult);
+
+			return success;
+		}
+
+		private bool CreateDirectoryInternal(string path, out ComplexResult complexResult)
+		{
+			Contract.Requires(!string.IsNullOrWhiteSpace(path));
+
 			{
 				var success = this.BasicConnect();
 				if (!success)
 				{
+					complexResult = ComplexResult.FailedComplexResult;
 					return false;
 				}
 			}
@@ -213,7 +224,8 @@ namespace sharpLightFtp
 				{
 					Command = string.Format("MKD {0}", path)
 				};
-				var success = complexFtpCommand.SendAndReceiveIsSuccess();
+
+				var success = complexFtpCommand.SendAndReceive(out complexResult);
 
 				return success;
 			}
@@ -240,24 +252,31 @@ namespace sharpLightFtp
 
 					foreach (var element in hierarchy)
 					{
-						changeWorkingDirectory:
+						changeWorkingDirectory: // yep, i know ... dirty, but effective
 						var name = element.Name;
 						var complexFtpCommand = new ComplexFtpCommand(this._controlComplexSocket, this.Encoding)
 						{
 							Command = string.Format("CWD {0}", name)
 						};
-						var success = complexFtpCommand.SendAndReceiveIsSuccess();
-						if (!success)
+						ComplexResult complexResult;
+						complexFtpCommand.SendAndReceive(out complexResult);
+						var ftpResponseType = complexResult.FtpResponseType;
+						switch (ftpResponseType)
 						{
-							return false;
+							case FtpResponseType.PermanentNegativeCompletion:
+								// some parsing of the actual ComplexResult.ResponseCode should be done in here
+								// i assume 5xx-state means "directory does not exist" all the time, which might be wrong
+								var success = this.CreateDirectoryInternal(name, out complexResult);
+								if (!success)
+								{
+									return false;
+								}
+								goto case FtpResponseType.PositiveCompletion;
+							case FtpResponseType.PositiveCompletion:
+								continue;
+							default:
+								return false;
 						}
-						success = this.CreateDirectory(name);
-						if (!success)
-						{
-							return false;
-						}
-
-						goto changeWorkingDirectory;
 					}
 				}
 
@@ -300,10 +319,10 @@ namespace sharpLightFtp
 							int read;
 							while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
 							{
-								using (var socketEventArgs = transferComplexSocket.GetSocketEventArgs())
-								{
-									return socketEventArgs.Send(buffer, 0, read);
-								}
+								var socketEventArgs = transferComplexSocket.GetSocketEventArgs();
+								var success = socketEventArgs.Send(buffer, 0, read);
+
+								return success;
 							}
 						}
 					}
@@ -397,7 +416,7 @@ namespace sharpLightFtp
 					Command = "FEAT"
 				};
 				ComplexResult complexResult;
-				var success = complexFtpCommand.SendAndReceiveIsSuccess(out complexResult);
+				var success = complexFtpCommand.SendAndReceive(out complexResult);
 				if (!success)
 				{
 					return false;
@@ -447,7 +466,7 @@ namespace sharpLightFtp
 					{
 						Command = "PASV"
 					};
-					var success = complexFtpCommand.SendAndReceiveIsSuccess(out complexResult);
+					var success = complexFtpCommand.SendAndReceive(out complexResult);
 					if (!success)
 					{
 						return null;
