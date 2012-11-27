@@ -13,9 +13,17 @@ namespace sharpLightFtp
 		protected FtpClientBase()
 		{
 			this.Encoding = Encoding.UTF8;
+			this.ConnectTimeout = TimeSpan.FromSeconds(30);
+			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
+			this.SendTimeout = TimeSpan.FromMinutes(5);
+			this.SendAndReceiveTimeout = TimeSpan.FromSeconds(30);
 		}
 
 		public Encoding Encoding { get; set; }
+		public TimeSpan ConnectTimeout { get; set; }
+		public TimeSpan ReceiveTimeout { get; set; }
+		public TimeSpan SendTimeout { get; set; }
+		public TimeSpan SendAndReceiveTimeout { get; set; }
 
 		protected static bool ExecuteQueue(Queue<Func<bool>> queue)
 		{

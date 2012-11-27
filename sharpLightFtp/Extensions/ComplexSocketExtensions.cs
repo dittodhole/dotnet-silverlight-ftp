@@ -11,29 +11,25 @@ namespace sharpLightFtp.Extensions
 {
 	internal static class ComplexSocketExtensions
 	{
-		private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
-		private static readonly TimeSpan ReceiveTimeout = TimeSpan.FromSeconds(30);
-		private static readonly TimeSpan SendTimeout = TimeSpan.FromMinutes(5);
-
-		internal static bool Connect(this ComplexSocket complexSocket)
+		internal static bool Connect(this ComplexSocket complexSocket, TimeSpan timeout)
 		{
 			Contract.Requires(complexSocket != null);
 
 			var socket = complexSocket.Socket;
 
-			using (var sendSocketEventArgs = complexSocket.GetSocketEventArgs())
+			using (var socketEventArgs = complexSocket.GetSocketEventArgs())
 			{
-				var async = socket.ConnectAsync(sendSocketEventArgs);
+				var async = socket.ConnectAsync(socketEventArgs);
 				if (async)
 				{
-					var receivedSignalWithinTime = sendSocketEventArgs.AutoResetEvent.WaitOne(ConnectTimeout);
+					var receivedSignalWithinTime = socketEventArgs.AutoResetEvent.WaitOne(timeout);
 					if (!receivedSignalWithinTime)
 					{
 						return false;
 					}
 				}
 
-				var exception = sendSocketEventArgs.ConnectByNameError;
+				var exception = socketEventArgs.ConnectByNameError;
 				if (exception != null)
 				{
 					return false;
@@ -43,16 +39,16 @@ namespace sharpLightFtp.Extensions
 			return true;
 		}
 
-		internal static bool Authenticate(this ComplexSocket complexSocket, string username, string password, Encoding encoding)
+		internal static bool Authenticate(this ComplexSocket complexSocket, TimeSpan timeout, Encoding encoding, string username, string password)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(complexSocket.IsControlSocket);
 			Contract.Requires(encoding != null);
 
-			var complexResult = complexSocket.SendAndReceive(encoding, "USER {0}", username);
+			var complexResult = complexSocket.SendAndReceive(timeout, encoding, "USER {0}", username);
 			if (complexResult.FtpResponseType == FtpResponseType.PositiveIntermediate)
 			{
-				complexResult = complexSocket.SendAndReceive(encoding, "PASS {0}", password);
+				complexResult = complexSocket.SendAndReceive(timeout, encoding, "PASS {0}", password);
 				if (!complexResult.Success)
 				{
 					return false;
@@ -66,47 +62,47 @@ namespace sharpLightFtp.Extensions
 			return true;
 		}
 
-		internal static ComplexResult SendAndReceive(this ComplexSocket complexSocket, Encoding encoding, string commandFormat, object arg0)
+		internal static ComplexResult SendAndReceive(this ComplexSocket complexSocket, TimeSpan timeout, Encoding encoding, string commandFormat, object arg0)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(encoding != null);
 			Contract.Requires(!string.IsNullOrWhiteSpace(commandFormat));
 
 			var command = string.Format(commandFormat, arg0);
-			var complexResult = complexSocket.SendAndReceive(encoding, command);
+			var complexResult = complexSocket.SendAndReceive(timeout, encoding, command);
 
 			return complexResult;
 		}
 
-		internal static ComplexResult SendAndReceive(this ComplexSocket complexSocket, Encoding encoding, string command)
+		internal static ComplexResult SendAndReceive(this ComplexSocket complexSocket, TimeSpan timeout, Encoding encoding, string command)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(encoding != null);
 			Contract.Requires(!string.IsNullOrWhiteSpace(command));
 
-			var success = complexSocket.Send(encoding, command);
+			var success = complexSocket.Send(timeout, encoding, command);
 			if (!success)
 			{
 				return ComplexResult.FailedComplexResult;
 			}
 
-			var complexResult = complexSocket.Receive(encoding);
+			var complexResult = complexSocket.Receive(timeout, encoding);
 
 			return complexResult;
 		}
 
-		internal static bool Send(this ComplexSocket complexSocket, Encoding encoding, string commandFormat, object arg0)
+		internal static bool Send(this ComplexSocket complexSocket, TimeSpan timeout, Encoding encoding, string commandFormat, object arg0)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(!string.IsNullOrWhiteSpace(commandFormat));
 
 			var command = string.Format(commandFormat, arg0);
-			var success = complexSocket.Send(encoding, command);
+			var success = complexSocket.Send(timeout, encoding, command);
 
 			return success;
 		}
 
-		internal static bool Send(this ComplexSocket complexSocket, Encoding encoding, string command)
+		internal static bool Send(this ComplexSocket complexSocket, TimeSpan timeout, Encoding encoding, string command)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(encoding != null);
@@ -119,12 +115,12 @@ namespace sharpLightFtp.Extensions
 
 			var buffer = encoding.GetBytes(command);
 			var memoryStream = new MemoryStream(buffer);
-			var success = complexSocket.Send(memoryStream);
+			var success = complexSocket.Send(timeout, memoryStream);
 
 			return success;
 		}
 
-		internal static bool Send(this ComplexSocket complexSocket, Stream stream)
+		internal static bool Send(this ComplexSocket complexSocket, TimeSpan timeout, Stream stream)
 		{
 			Contract.Requires(stream != null);
 
@@ -139,7 +135,7 @@ namespace sharpLightFtp.Extensions
 				var async = socket.SendAsync(socketEventArgs);
 				if (async)
 				{
-					var receivedSignalWithinTime = socketEventArgs.AutoResetEvent.WaitOne(SendTimeout);
+					var receivedSignalWithinTime = socketEventArgs.AutoResetEvent.WaitOne(timeout);
 					if (!receivedSignalWithinTime)
 					{
 						return false;
@@ -154,7 +150,7 @@ namespace sharpLightFtp.Extensions
 			return true;
 		}
 
-		internal static ComplexResult Receive(this ComplexSocket complexSocket, Encoding encoding)
+		internal static ComplexResult Receive(this ComplexSocket complexSocket, TimeSpan timeout, Encoding encoding)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(encoding != null);
@@ -169,7 +165,7 @@ namespace sharpLightFtp.Extensions
 				var responseCode = 0;
 				var responseMessage = string.Empty;
 
-				while (complexSocket.ReceiveChunk(socketEventArgs))
+				while (complexSocket.ReceiveChunk(timeout, socketEventArgs))
 				{
 					var data = socketEventArgs.GetData(encoding);
 					if (string.IsNullOrWhiteSpace(data))
@@ -218,20 +214,24 @@ namespace sharpLightFtp.Extensions
 			}
 		}
 
-		private static bool ReceiveChunk(this ComplexSocket complexSocket, SocketEventArgs socketEventArgs)
+		private static bool ReceiveChunk(this ComplexSocket complexSocket, TimeSpan timeout, SocketEventArgs socketEventArgs)
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(socketEventArgs != null);
 
 			var socket = complexSocket.Socket;
 			var async = socket.ReceiveAsync(socketEventArgs);
-			if (!async)
+			if (async)
 			{
-				return true;
+				var receivedSignalWithinTime = socketEventArgs.AutoResetEvent.WaitOne(timeout);
+				if (!receivedSignalWithinTime)
+				{
+					return false;
+				}
 			}
 
-			var receivedSignalWithinTime = socketEventArgs.AutoResetEvent.WaitOne(ReceiveTimeout);
-			if (!receivedSignalWithinTime)
+			var exception = socketEventArgs.ConnectByNameError;
+			if (exception != null)
 			{
 				return false;
 			}
