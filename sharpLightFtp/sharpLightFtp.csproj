@@ -89,12 +89,15 @@
     <Compile Include="ComplexResult.cs" />
     <Compile Include="ComplexSocket.cs" />
     <Compile Include="Enums.cs" />
+    <Compile Include="EventArgs\BaseFtpCommandFailedEventArgs.cs" />
+    <Compile Include="EventArgs\FtpCommandTimedOutEventArgs.cs" />
     <Compile Include="EventArgs\SocketEventArgs.cs" />
     <Compile Include="Extensions\ComplexSocketExtensions.cs" />
+    <Compile Include="EventArgs\FtpCommandFailedEventArgs.cs" />
     <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
+    <Compile Include="Extensions\QueueExtensions.cs" />
     <Compile Include="FtpClient.cs" />
     <Compile Include="Extensions\FtpClientExtensions.cs" />
-    <Compile Include="FtpClientBase.cs" />
     <Compile Include="FtpDirectory.cs" />
     <Compile Include="FtpFile.cs" />
     <Compile Include="FtpFileSystemObject.cs" />

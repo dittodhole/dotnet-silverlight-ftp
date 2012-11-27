@@ -1,5 +1,5 @@
-﻿using System.Diagnostics.Contracts;
-using System.Net;
+﻿using System;
+using System.Diagnostics.Contracts;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -11,16 +11,15 @@ namespace sharpLightFtp.EventArgs
 		// TODO implement dispose for AutoResetEvent
 
 		private readonly AutoResetEvent _autoResetEvent = new AutoResetEvent(false);
+		private readonly ComplexSocket _complexSocket;
+		private readonly TimeSpan _timeout;
 
-		internal SocketEventArgs(ComplexSocket complexSocket)
-			: this(complexSocket.EndPoint) {}
-
-		public SocketEventArgs(EndPoint endPoint)
+		public SocketEventArgs(ComplexSocket complexSocket, TimeSpan timeout)
 			: this()
 		{
-			Contract.Requires(endPoint != null);
-
-			this.RemoteEndPoint = endPoint;
+			this._complexSocket = complexSocket;
+			this._timeout = timeout;
+			this.RemoteEndPoint = complexSocket.EndPoint;
 		}
 
 		private SocketEventArgs()
@@ -28,12 +27,38 @@ namespace sharpLightFtp.EventArgs
 			this.SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http;
 		}
 
-		public AutoResetEvent AutoResetEvent
+		private AutoResetEvent AutoResetEvent
 		{
 			get
 			{
 				return this._autoResetEvent;
 			}
+		}
+
+		public ComplexSocket ComplexSocket
+		{
+			get
+			{
+				return this._complexSocket;
+			}
+		}
+
+		public TimeSpan Timeout
+		{
+			get
+			{
+				return this._timeout;
+			}
+		}
+
+		internal void Signal()
+		{
+			this.AutoResetEvent.Set();
+		}
+
+		internal bool WaitForSignal()
+		{
+			return this.AutoResetEvent.WaitOne(this.Timeout);
 		}
 
 		public string GetData(Encoding encoding)

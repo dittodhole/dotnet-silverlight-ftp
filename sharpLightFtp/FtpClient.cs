@@ -4,13 +4,14 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
+using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
-	public sealed class FtpClient : FtpClientBase,
-	                                IDisposable
+	public sealed class FtpClient : IDisposable
 	{
 		private readonly object _lockControlComplexSocket = new object();
 		private readonly Type _typeOfFtpFeatures = typeof (FtpFeatures);
@@ -37,6 +38,7 @@ namespace sharpLightFtp
 		}
 
 		public FtpClient(Uri uri)
+			: this()
 		{
 			Contract.Requires(uri != null);
 			Contract.Requires(string.Equals(uri.Scheme, Uri.UriSchemeFtp));
@@ -49,8 +51,20 @@ namespace sharpLightFtp
 			this.Port = uriBuilder.Port;
 		}
 
-		public FtpClient() {}
+		public FtpClient()
+		{
+			this.Encoding = Encoding.UTF8;
+			this.ConnectTimeout = TimeSpan.FromSeconds(30);
+			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
+			this.SendTimeout = TimeSpan.FromMinutes(5);
+			this.SendAndReceiveTimeout = TimeSpan.FromSeconds(30);
+		}
 
+		public Encoding Encoding { get; set; }
+		public TimeSpan ConnectTimeout { get; set; }
+		public TimeSpan ReceiveTimeout { get; set; }
+		public TimeSpan SendTimeout { get; set; }
+		public TimeSpan SendAndReceiveTimeout { get; set; }
 		public string Server { get; set; }
 		public string Username { get; set; }
 		public string Password { get; set; }
@@ -84,6 +98,17 @@ namespace sharpLightFtp
 		}
 
 		#endregion
+
+		public event EventHandler<BaseFtpCommandFailedEventArgs> FtpCommandFailed;
+
+		internal void RaiseFtpCommandFailed(BaseFtpCommandFailedEventArgs e)
+		{
+			var handler = this.FtpCommandFailed;
+			if (handler != null)
+			{
+				handler.Invoke(this, e);
+			}
+		}
 
 		public IEnumerable<FtpListItem> GetListing(string path)
 		{
@@ -190,12 +215,12 @@ namespace sharpLightFtp
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
 			ComplexResult complexResult;
-			var success = this.CreateDirectoryInternal(path, out complexResult);
+			var success = this.TryCreateDirectoryInternal(path, out complexResult);
 
 			return success;
 		}
 
-		private bool CreateDirectoryInternal(string path, out ComplexResult complexResult)
+		private bool TryCreateDirectoryInternal(string path, out ComplexResult complexResult)
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
@@ -234,7 +259,6 @@ namespace sharpLightFtp
 			lock (this._lockControlComplexSocket)
 			{
 				var controlComplexSocket = this._controlComplexSocket;
-				
 				{
 					var hierarchy = ftpFile.GetHierarchy().Reverse();
 
@@ -248,7 +272,7 @@ namespace sharpLightFtp
 							case FtpResponseType.PermanentNegativeCompletion:
 								// some parsing of the actual ComplexResult.ResponseCode should be done in here
 								// i assume 5xx-state means "directory does not exist" all the time, which might be wrong
-								var success = this.CreateDirectoryInternal(name, out complexResult);
+								var success = this.TryCreateDirectoryInternal(name, out complexResult);
 								if (!success)
 								{
 									return false;
@@ -317,7 +341,7 @@ namespace sharpLightFtp
 				queue.Enqueue(this.EnsureFeatures);
 			}
 
-			var success = ExecuteQueue(queue);
+			var success = queue.ExecuteQueue();
 
 			return success;
 		}
@@ -334,36 +358,31 @@ namespace sharpLightFtp
 						return true;
 					}
 				}
-				else
+				var controlComplexSocket = this.GetControlComplexSocket();
+				var queue = new Queue<Func<bool>>();
 				{
-					var controlComplexSocket = this.GetControlComplexSocket();
-					var queue = new Queue<Func<bool>>();
+					queue.Enqueue(() => controlComplexSocket.Connect(this.ConnectTimeout));
+					queue.Enqueue(() =>
 					{
-						queue.Enqueue(() => controlComplexSocket.Connect(this.ConnectTimeout));
-						queue.Enqueue(() =>
-						{
-							var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
-							var success = complexResult.Success;
+						var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
+						var success = complexResult.Success;
 
-							return success;
-						});
-						queue.Enqueue(() => controlComplexSocket.Authenticate(this.SendAndReceiveTimeout, this.Encoding, this.Username, this.Password));
-					}
-
-					{
-						var success = ExecuteQueue(queue);
-						if (!success)
-						{
-							controlComplexSocket.IsFailed = true;
-						}
-					}
-					this._controlComplexSocket = controlComplexSocket;
+						return success;
+					});
+					queue.Enqueue(() => controlComplexSocket.Authenticate(this.SendAndReceiveTimeout, this.Encoding, this.Username, this.Password));
 				}
+
+				{
+					var success = queue.ExecuteQueue();
+					if (!success)
+					{
+						return false;
+					}
+				}
+				this._controlComplexSocket = controlComplexSocket;
+
+				return true;
 			}
-
-			var isFailed = complexSocket.IsFailed;
-
-			return !isFailed;
 		}
 
 		private bool EnsureFeatures()
@@ -477,7 +496,7 @@ namespace sharpLightFtp
 					port = (p1 << 8) + p2;
 				}
 
-				var transferComplexSocket = GetTransferComplexSocket(ipAddress, port);
+				var transferComplexSocket = this.GetTransferComplexSocket(ipAddress, port);
 				return transferComplexSocket;
 			}
 		}

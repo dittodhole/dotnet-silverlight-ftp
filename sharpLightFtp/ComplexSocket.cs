@@ -2,31 +2,28 @@
 using System.Diagnostics.Contracts;
 using System.Net;
 using System.Net.Sockets;
+using sharpLightFtp.EventArgs;
 
 namespace sharpLightFtp
 {
-	internal sealed class ComplexSocket : IDisposable
+	public sealed class ComplexSocket : IDisposable
 	{
 		private readonly EndPoint _endPoint;
+		private readonly FtpClient _ftpClient;
 		private readonly bool _isControlSocket;
-		private readonly Socket _socket;
+		private readonly Socket _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-		internal ComplexSocket(Socket socket, EndPoint endPoint, bool isControlSocket)
-			: this(socket, endPoint)
+		internal ComplexSocket(FtpClient ftpClient, EndPoint endPoint, bool isControlSocket)
 		{
+			Contract.Requires(ftpClient != null);
+			Contract.Requires(endPoint != null);
+
+			this._ftpClient = ftpClient;
+			this._endPoint = endPoint;
 			this._isControlSocket = isControlSocket;
 		}
 
-		private ComplexSocket(Socket socket, EndPoint endPoint)
-		{
-			Contract.Requires(socket != null);
-			Contract.Requires(endPoint != null);
-
-			this._socket = socket;
-			this._endPoint = endPoint;
-		}
-
-		internal Socket Socket
+		public Socket Socket
 		{
 			get
 			{
@@ -34,7 +31,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		internal EndPoint EndPoint
+		public EndPoint EndPoint
 		{
 			get
 			{
@@ -42,7 +39,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		internal bool IsControlSocket
+		public bool IsControlSocket
 		{
 			get
 			{
@@ -50,13 +47,19 @@ namespace sharpLightFtp
 			}
 		}
 
-		internal bool IsFailed { get; set; }
-
-		internal bool Connected
+		public bool Connected
 		{
 			get
 			{
 				return this._socket.Connected;
+			}
+		}
+
+		public FtpClient FtpClient
+		{
+			get
+			{
+				return this._ftpClient;
 			}
 		}
 
@@ -76,6 +79,20 @@ namespace sharpLightFtp
 			var buffer = new byte[receiveBufferSize];
 
 			return buffer;
+		}
+
+		internal byte[] GetSendBuffer()
+		{
+			var socket = this.Socket;
+			var sendBufferSize = socket.SendBufferSize;
+			var buffer = new byte[sendBufferSize];
+
+			return buffer;
+		}
+
+		internal void RaiseFtpCommandFailed(BaseFtpCommandFailedEventArgs e)
+		{
+			this.FtpClient.RaiseFtpCommandFailed(e);
 		}
 	}
 }

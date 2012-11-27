@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace sharpLightFtp
 {
-	internal sealed class ComplexResult
+	public sealed class ComplexResult
 	{
 		internal static readonly ComplexResult FailedComplexResult = new ComplexResult(FtpResponseType.None, 0, null, Enumerable.Empty<string>());
 
@@ -20,7 +20,7 @@ namespace sharpLightFtp
 			this._messages.AddRange(messages);
 		}
 
-		internal int ResponseCode
+		public int ResponseCode
 		{
 			get
 			{
@@ -28,7 +28,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		internal string ResponseMessage
+		public string ResponseMessage
 		{
 			get
 			{
@@ -36,7 +36,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		internal IEnumerable<string> Messages
+		public IEnumerable<string> Messages
 		{
 			get
 			{
@@ -44,7 +44,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		internal FtpResponseType FtpResponseType
+		public FtpResponseType FtpResponseType
 		{
 			get
 			{
@@ -52,7 +52,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		internal bool Success
+		public bool Success
 		{
 			get
 			{
