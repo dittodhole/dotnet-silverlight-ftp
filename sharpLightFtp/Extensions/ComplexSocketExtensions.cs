@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -18,28 +19,32 @@ namespace sharpLightFtp.Extensions
 
 			var socket = complexSocket.Socket;
 
-			using (var socketEventArgs = complexSocket.GetSocketEventArgs(timeout))
+			using (var socketAsyncEventArgs = complexSocket.GetSocketAsyncEventArgs(timeout))
 			{
-				var async = socket.ConnectAsync(socketEventArgs);
+				var async = socket.ConnectAsync(socketAsyncEventArgs);
 				if (async)
 				{
-					var receivedSignalWithinTime = socketEventArgs.WaitForSignal();
+					var userToken = socketAsyncEventArgs.UserToken;
+					var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
+					var receivedSignalWithinTime = socketAsyncEventArgsUserToken.WaitForSignal();
 					if (!receivedSignalWithinTime)
 					{
-						var ftpCommandFailedEventArgs = new FtpCommandTimedOutEventArgs(socketEventArgs);
-						complexSocket.RaiseFtpCommandFailed(ftpCommandFailedEventArgs);
+						var ftpCommandFailedEventArgs = new FtpCommandTimedOutEventArgs(socketAsyncEventArgs);
+						complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 						return false;
 					}
 				}
 
-				var exception = socketEventArgs.ConnectByNameError;
+				var exception = socketAsyncEventArgs.ConnectByNameError;
 				if (exception != null)
 				{
-					var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketEventArgs);
-					complexSocket.RaiseFtpCommandFailed(ftpCommandFailedEventArgs);
+					var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketAsyncEventArgs);
+					complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 					return false;
 				}
 			}
+
+			// TODO maybe a check against socketAsyncEventArgs.SocketError == SocketError.Success would be more correct
 
 			return true;
 		}
@@ -134,27 +139,32 @@ namespace sharpLightFtp.Extensions
 			int read;
 			while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
 			{
-				var socketEventArgs = complexSocket.GetSocketEventArgs(timeout);
-				socketEventArgs.SetBuffer(buffer, 0, read);
-				var async = socket.SendAsync(socketEventArgs);
+				var socketAsyncEventArgs = complexSocket.GetSocketAsyncEventArgs(timeout);
+				socketAsyncEventArgs.SetBuffer(buffer, 0, read);
+				var async = socket.SendAsync(socketAsyncEventArgs);
 				if (async)
 				{
-					var receivedSignalWithinTime = socketEventArgs.WaitForSignal();
+					var userToken = socketAsyncEventArgs.UserToken;
+					var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
+					var receivedSignalWithinTime = socketAsyncEventArgsUserToken.WaitForSignal();
 					if (!receivedSignalWithinTime)
 					{
-						var ftpCommandFailedEventArgs = new FtpCommandTimedOutEventArgs(socketEventArgs);
-						complexSocket.RaiseFtpCommandFailed(ftpCommandFailedEventArgs);
+						var ftpCommandFailedEventArgs = new FtpCommandTimedOutEventArgs(socketAsyncEventArgs);
+						complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 						return false;
 					}
 				}
-				var exception = socketEventArgs.ConnectByNameError;
+				var exception = socketAsyncEventArgs.ConnectByNameError;
 				if (exception != null)
 				{
-					var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketEventArgs);
-					complexSocket.RaiseFtpCommandFailed(ftpCommandFailedEventArgs);
+					var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketAsyncEventArgs);
+					complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 					return false;
 				}
 			}
+
+			// TODO maybe a check against socketAsyncEventArgs.SocketError == SocketError.Success would be more correct
+
 			return true;
 		}
 
@@ -163,19 +173,19 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(encoding != null);
 
-			using (var socketEventArgs = complexSocket.GetSocketEventArgs(timeout))
+			using (var socketAsyncEventArgs = complexSocket.GetSocketAsyncEventArgs(timeout))
 			{
 				var responseBuffer = complexSocket.GetReceiveBuffer();
-				socketEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
+				socketAsyncEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
 				var ftpResponseType = FtpResponseType.None;
 				var messages = new List<string>();
 				var stringResponseCode = string.Empty;
 				var responseCode = 0;
 				var responseMessage = string.Empty;
 
-				while (complexSocket.ReceiveChunk(socketEventArgs))
+				while (complexSocket.ReceiveChunk(socketAsyncEventArgs))
 				{
-					var data = socketEventArgs.GetData(encoding);
+					var data = socketAsyncEventArgs.GetData(encoding);
 					if (string.IsNullOrWhiteSpace(data))
 					{
 						break;
@@ -223,49 +233,58 @@ namespace sharpLightFtp.Extensions
 			}
 		}
 
-		private static bool ReceiveChunk(this ComplexSocket complexSocket, SocketEventArgs socketEventArgs)
+		private static bool ReceiveChunk(this ComplexSocket complexSocket, SocketAsyncEventArgs socketAsyncEventArgs)
 		{
 			Contract.Requires(complexSocket != null);
-			Contract.Requires(socketEventArgs != null);
+			Contract.Requires(socketAsyncEventArgs != null);
 
 			var socket = complexSocket.Socket;
-			var async = socket.ReceiveAsync(socketEventArgs);
+			var async = socket.ReceiveAsync(socketAsyncEventArgs);
 			if (async)
 			{
-				var receivedSignalWithinTime = socketEventArgs.WaitForSignal();
+				var userToken = socketAsyncEventArgs.UserToken;
+				var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
+				var receivedSignalWithinTime = socketAsyncEventArgsUserToken.WaitForSignal();
 				if (!receivedSignalWithinTime)
 				{
-					var ftpCommandFailedEventArgs = new FtpCommandTimedOutEventArgs(socketEventArgs);
-					complexSocket.RaiseFtpCommandFailed(ftpCommandFailedEventArgs);
+					var ftpCommandFailedEventArgs = new FtpCommandTimedOutEventArgs(socketAsyncEventArgs);
+					complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 					return false;
 				}
 			}
 
-			var exception = socketEventArgs.ConnectByNameError;
+			var exception = socketAsyncEventArgs.ConnectByNameError;
 			if (exception != null)
 			{
-				var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketEventArgs);
-				complexSocket.RaiseFtpCommandFailed(ftpCommandFailedEventArgs);
+				var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketAsyncEventArgs);
+				complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 
 				return false;
 			}
 
+			// TODO maybe a check against socketAsyncEventArgs.SocketError == SocketError.Success would be more correct
+
 			return true;
 		}
 
-		internal static SocketEventArgs GetSocketEventArgs(this ComplexSocket complexSocket, TimeSpan timeout)
+		internal static SocketAsyncEventArgs GetSocketAsyncEventArgs(this ComplexSocket complexSocket, TimeSpan timeout)
 		{
 			Contract.Requires(complexSocket != null);
 
-			var socketEventArgs = new SocketEventArgs(complexSocket, timeout);
-			socketEventArgs.Completed += (sender, socketAsyncEventArgs) =>
+			var endPoint = complexSocket.EndPoint;
+			var socketAsyncEventArgs = new SocketAsyncEventArgs
 			{
-				var syncEventArgs = (SocketEventArgs) socketAsyncEventArgs;
-				syncEventArgs.Signal();
-				// sharpLightFtp.Extensions.ComplexFtpCommandExtensions.Send(this ComplexFtpCommand complexFtpCommand) is waiting for it
+				RemoteEndPoint = endPoint,
+				SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http
+			};
+			socketAsyncEventArgs.Completed += (sender, args) => 
+			{
+				var userToken = args.UserToken;
+				var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
+				socketAsyncEventArgsUserToken.Signal();
 			};
 
-			return socketEventArgs;
+			return socketAsyncEventArgs;
 		}
 	}
 }

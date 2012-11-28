@@ -1,9 +1,11 @@
-﻿namespace sharpLightFtp.EventArgs
+﻿using System.Net.Sockets;
+
+namespace sharpLightFtp.EventArgs
 {
 	public sealed class FtpCommandTimedOutEventArgs : BaseFtpCommandFailedEventArgs
 	{
-		public FtpCommandTimedOutEventArgs(SocketEventArgs socketEventArgs)
-			: base(socketEventArgs) {}
+		internal FtpCommandTimedOutEventArgs(SocketAsyncEventArgs socketAsyncEventArgs)
+			: base(socketAsyncEventArgs) {}
 
 		public override bool TimedOut
 		{

@@ -90,9 +90,9 @@ namespace sharpLightFtp
 			return buffer;
 		}
 
-		internal void RaiseFtpCommandFailed(BaseFtpCommandFailedEventArgs e)
+		internal void RaiseFtpCommandFailedAsync(BaseFtpCommandFailedEventArgs e)
 		{
-			this.FtpClient.RaiseFtpCommandFailed(e);
+			this.FtpClient.RaiseFtpCommandFailedAsync(e);
 		}
 	}
 }

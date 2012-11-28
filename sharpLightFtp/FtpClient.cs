@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
 
@@ -101,12 +102,12 @@ namespace sharpLightFtp
 
 		public event EventHandler<BaseFtpCommandFailedEventArgs> FtpCommandFailed;
 
-		internal void RaiseFtpCommandFailed(BaseFtpCommandFailedEventArgs e)
+		internal void RaiseFtpCommandFailedAsync(BaseFtpCommandFailedEventArgs e)
 		{
 			var handler = this.FtpCommandFailed;
 			if (handler != null)
 			{
-				handler.Invoke(this, e);
+				Task.Factory.StartNew(() => handler.Invoke(this, e));
 			}
 		}
 
