@@ -33,6 +33,7 @@ namespace sharpLightFtp
 		}
 
 		public FtpClient(string username, string password)
+			: this()
 		{
 			this.Username = username;
 			this.Password = password;
