@@ -272,10 +272,12 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(complexSocket != null);
 
 			var endPoint = complexSocket.EndPoint;
+			var asyncEventArgsUserToken = new SocketAsyncEventArgsUserToken(complexSocket, timeout);
 			var socketAsyncEventArgs = new SocketAsyncEventArgs
 			{
 				RemoteEndPoint = endPoint,
-				SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http
+				SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http,
+				UserToken = asyncEventArgsUserToken
 			};
 			socketAsyncEventArgs.Completed += (sender, args) => 
 			{
