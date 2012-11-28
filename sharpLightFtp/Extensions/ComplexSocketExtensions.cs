@@ -233,6 +233,8 @@ namespace sharpLightFtp.Extensions
 
 		internal static bool DoInternal(this ComplexSocket complexSocket, Func<SocketAsyncEventArgs, bool> predicate, SocketAsyncEventArgs socketAsyncEventArgs)
 		{
+			// TODO predicate is not bound to complexSocket-instance ... bad design
+
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(predicate != null);
 			Contract.Requires(socketAsyncEventArgs != null);
