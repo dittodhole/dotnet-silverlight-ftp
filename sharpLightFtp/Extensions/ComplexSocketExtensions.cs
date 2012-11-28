@@ -17,11 +17,9 @@ namespace sharpLightFtp.Extensions
 		{
 			Contract.Requires(complexSocket != null);
 
-			var socket = complexSocket.Socket;
-
 			using (var socketAsyncEventArgs = complexSocket.GetSocketAsyncEventArgs(timeout))
 			{
-				var success = complexSocket.DoInternal(socket.ConnectAsync, socketAsyncEventArgs);
+				var success = complexSocket.DoInternal(socket => socket.ConnectAsync, socketAsyncEventArgs);
 				if (!success)
 				{
 					return false;
@@ -116,14 +114,13 @@ namespace sharpLightFtp.Extensions
 		{
 			Contract.Requires(stream != null);
 
-			var socket = complexSocket.Socket;
 			var buffer = complexSocket.GetSendBuffer();
 			int read;
 			while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
 			{
 				var socketAsyncEventArgs = complexSocket.GetSocketAsyncEventArgs(timeout);
 				socketAsyncEventArgs.SetBuffer(buffer, 0, read);
-				var success = complexSocket.DoInternal(socket.SendAsync, socketAsyncEventArgs);
+				var success = complexSocket.DoInternal(socket => socket.SendAsync, socketAsyncEventArgs);
 				if (!success)
 				{
 					return false;
@@ -225,21 +222,20 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(socketAsyncEventArgs != null);
 
-			var socket = complexSocket.Socket;
-			var success = complexSocket.DoInternal(socket.ReceiveAsync, socketAsyncEventArgs);
+			var success = complexSocket.DoInternal(socket => socket.ReceiveAsync, socketAsyncEventArgs);
 
 			return success;
 		}
 
-		internal static bool DoInternal(this ComplexSocket complexSocket, Func<SocketAsyncEventArgs, bool> predicate, SocketAsyncEventArgs socketAsyncEventArgs)
+		internal static bool DoInternal(this ComplexSocket complexSocket, Func<Socket, Func<SocketAsyncEventArgs, bool>> predicate, SocketAsyncEventArgs socketAsyncEventArgs)
 		{
-			// TODO predicate is not bound to complexSocket-instance ... bad design
-
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(predicate != null);
 			Contract.Requires(socketAsyncEventArgs != null);
 
-			var async = predicate.Invoke(socketAsyncEventArgs);
+			var socket = complexSocket.Socket;
+			var socketPredicate = predicate.Invoke(socket);
+			var async = socketPredicate.Invoke(socketAsyncEventArgs);
 			if (async)
 			{
 				var userToken = socketAsyncEventArgs.UserToken;
