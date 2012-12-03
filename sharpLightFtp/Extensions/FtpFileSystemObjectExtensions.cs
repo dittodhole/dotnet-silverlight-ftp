@@ -10,11 +10,14 @@ namespace sharpLightFtp.Extensions
 			Contract.Requires(ftpFileSystemObject != null);
 
 			var current = ftpFileSystemObject.ParentDirectory;
-			while (current != null)
+			if (current == null)
+			{
+				yield break;
+			}
+			do
 			{
 				yield return current;
-				current = current.ParentDirectory;
-			}
+			} while ((current = current.ParentDirectory) != null);
 		}
 	}
 }

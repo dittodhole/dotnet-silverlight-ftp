@@ -306,13 +306,24 @@ namespace sharpLightFtp
 						}
 					}
 					{
-						// sending content via transfer socket
+						// connect to transfer socket
 						var connected = transferComplexSocket.Connect(this.ConnectTimeout);
 						if (!connected)
 						{
 							return false;
 						}
-
+					}
+					{
+						// receiving STOR-response via control socket (should be 150/125)
+						var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
+						var success = complexResult.Success;
+						if (!success)
+						{
+							return false;
+						}
+					}
+					{
+						// sending content via transfer socket
 						var success = transferComplexSocket.Send(this.SendTimeout, stream);
 						if (!success)
 						{
@@ -320,17 +331,22 @@ namespace sharpLightFtp
 						}
 					}
 				}
-				{
-					// receiving STOR-response via control socket
-					var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
-					if (complexResult.FtpResponseType == FtpResponseType.PositiveIntermediate)
-					{
-						// sometimes we are fast enough to catch the 3xx state ... yep, i know ... *face palm*
-						complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
-					}
-					var success = complexResult.Success;
 
-					return success;
+				{
+					FtpResponseType ftpResponseType;
+					do
+					{
+						var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
+						var success = complexResult.Success;
+						if (!success)
+						{
+							return false;
+						}
+
+						ftpResponseType = complexResult.FtpResponseType;
+					} while (ftpResponseType != FtpResponseType.PositiveCompletion);
+
+					return true;
 				}
 			}
 		}
