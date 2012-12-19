@@ -90,6 +90,8 @@
     <Compile Include="ComplexSocket.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="EventArgs\BaseFtpCommandFailedEventArgs.cs" />
+    <Compile Include="EventArgs\BaseFtpCommandWithSocketEventArgsFailedEventArgs.cs" />
+    <Compile Include="EventArgs\FtpAuthenticationFailedEventArgs.cs" />
     <Compile Include="EventArgs\FtpCommandTimedOutEventArgs.cs" />
     <Compile Include="Extensions\ComplexSocketExtensions.cs" />
     <Compile Include="EventArgs\FtpCommandFailedEventArgs.cs" />

@@ -2,7 +2,7 @@
 
 namespace sharpLightFtp.EventArgs
 {
-	public sealed class FtpCommandFailedEventArgs : BaseFtpCommandFailedEventArgs
+	public sealed class FtpCommandFailedEventArgs : BaseFtpCommandWithSocketEventArgsFailedEventArgs
 	{
 		internal FtpCommandFailedEventArgs(SocketAsyncEventArgs socketAsyncEventArgs)
 			: base(socketAsyncEventArgs) {}

@@ -2,7 +2,7 @@
 
 namespace sharpLightFtp.EventArgs
 {
-	public sealed class FtpCommandTimedOutEventArgs : BaseFtpCommandFailedEventArgs
+	public sealed class FtpCommandTimedOutEventArgs : BaseFtpCommandWithSocketEventArgsFailedEventArgs
 	{
 		internal FtpCommandTimedOutEventArgs(SocketAsyncEventArgs socketAsyncEventArgs)
 			: base(socketAsyncEventArgs) {}
