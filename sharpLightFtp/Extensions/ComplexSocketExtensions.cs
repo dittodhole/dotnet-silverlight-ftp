@@ -41,7 +41,7 @@ namespace sharpLightFtp.Extensions
 				complexResult = complexSocket.SendAndReceive(timeout, encoding, "PASS {0}", password);
 				if (!complexResult.Success)
 				{
-					var message = string.Format("Could not authenticate with USER \"{0}\" and PASS \"{1}\" - invalid PASS", username, password);
+					var message = string.Format("Could not authenticate with USER \"{0}\" and PASS \"{1}\"", username, password);
 					var ftpCommandFailedEventArgs = new FtpAuthenticationFailedEventArgs(complexSocket, message);
 					complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 					return false;
@@ -49,7 +49,7 @@ namespace sharpLightFtp.Extensions
 			}
 			else if (!complexResult.Success)
 			{
-				var message = string.Format("Could not authenticate with USER \"{0}\" - invalid USER", username);
+				var message = string.Format("Could not authenticate with USER \"{0}\"", username);
 				var ftpCommandFailedEventArgs = new FtpAuthenticationFailedEventArgs(complexSocket, message);
 				complexSocket.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
 				return false;
