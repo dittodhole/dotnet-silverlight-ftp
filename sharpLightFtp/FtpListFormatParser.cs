@@ -8,8 +8,8 @@ using System.Text.RegularExpressions;
 namespace sharpLightFtp
 {
 	/// <summary>
-	/// 	Map's regex group index's to the appropriate
-	/// 	fields in the parser results.
+	///     Map's regex group index's to the appropriate
+	///     fields in the parser results.
 	/// </summary>
 	internal sealed class FtpListFormatParser : IDisposable
 	{
@@ -31,55 +31,55 @@ namespace sharpLightFtp
 		private readonly FtpObjectType _objectType;
 
 		/// <summary>
-		/// 	The index of the match group collection where the object group can be found after
-		/// 	a successful parse. Setting a less than 1 value indicates that this field is not available.
+		///     The index of the match group collection where the object group can be found after
+		///     a successful parse. Setting a less than 1 value indicates that this field is not available.
 		/// </summary>
 		private int _groupIndex;
 
 		/// <summary>
-		/// 	The index of the match group collection where the object link path can be found afet
-		/// 	a successful parse. Setting a less than 1 value indicates that this field is not available.
+		///     The index of the match group collection where the object link path can be found afet
+		///     a successful parse. Setting a less than 1 value indicates that this field is not available.
 		/// </summary>
 		private int _linkPathIndex;
 
 		/// <summary>
-		/// 	The index of the match group collection where the object mode can be found after
-		/// 	a successful parse. Setting a less than 1 value indicates that this field is not available.
+		///     The index of the match group collection where the object mode can be found after
+		///     a successful parse. Setting a less than 1 value indicates that this field is not available.
 		/// </summary>
 		private int _modeIndex;
 
 		/// <summary>
-		/// 	The index in the match group collection where the object name can be found after
-		/// 	a successfull parse. Setting a less than 1 value indicates that this field is not available.
+		///     The index in the match group collection where the object name can be found after
+		///     a successfull parse. Setting a less than 1 value indicates that this field is not available.
 		/// </summary>
 		private int _modifyIndex;
 
 		/// <summary>
-		/// 	The index in the match group collection where the object name can be found after
-		/// 	a successfull parse. Setting a less than 1 value indicates that this field is not available.
+		///     The index in the match group collection where the object name can be found after
+		///     a successfull parse. Setting a less than 1 value indicates that this field is not available.
 		/// </summary>
 		private int _nameIndex;
 
 		/// <summary>
-		/// 	The index of the match group collection where the object owner can be found after
-		/// 	a successful parse. Setting a less than 1 value indicates that this field is not available.
+		///     The index of the match group collection where the object owner can be found after
+		///     a successful parse. Setting a less than 1 value indicates that this field is not available.
 		/// </summary>
 		private int _ownerIndex;
 
 		/// <summary>
-		/// 	The regex used to parse the input string.
+		///     The regex used to parse the input string.
 		/// </summary>
 		private Regex _regex;
 
 		/// <summary>
-		/// 	The index in the match group collection where the object name can be found after
-		/// 	a successfull parse. Setting a less than 1 value indicates that this field is not available.
+		///     The index in the match group collection where the object name can be found after
+		///     a successfull parse. Setting a less than 1 value indicates that this field is not available.
 		/// </summary>
 		private int _sizeIndex;
 
 		/// <summary>
-		/// 	Creates a new instance of the FtpListParser object and sets
-		/// 	the given index locations as specified.
+		///     Creates a new instance of the FtpListParser object and sets
+		///     the given index locations as specified.
 		/// </summary>
 		/// <param name="re"> </param>
 		/// <param name="nameIndex"> </param>
@@ -104,8 +104,8 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	Creates a new instance of the FtpListParser object and sets
-		/// 	the given index locations as sepcified.
+		///     Creates a new instance of the FtpListParser object and sets
+		///     the given index locations as sepcified.
 		/// </summary>
 		/// <param name="regex"> </param>
 		/// <param name="nameIndex"> </param>
@@ -120,7 +120,7 @@ namespace sharpLightFtp
 			: this(new Regex(regex), nameIndex, sizeIndex, modifyIndex, modeIndex, ownerIndex, groupIndex, linkPathIndex, type) {}
 
 		/// <summary>
-		/// 	The type of objec this parser is for (File or Directory)
+		///     The type of objec this parser is for (File or Directory)
 		/// </summary>
 		internal FtpObjectType ObjectType
 		{
@@ -131,13 +131,15 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The name of the object. A null value is returned when this information is not available.
+		///     The name of the object. A null value is returned when this information is not available.
 		/// </summary>
 		internal string Name
 		{
 			get
 			{
-				if (this._nameIndex > 0 && this.Match != null && this.Match.Success
+				if (this._nameIndex > 0
+				    && this.Match != null
+				    && this.Match.Success
 				    && this.Match.Groups.Count > this._nameIndex)
 				{
 					var value = this.Match.Groups[this._nameIndex].Value;
@@ -149,13 +151,14 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The size of the object. 0 is returned when this information is not available.
+		///     The size of the object. 0 is returned when this information is not available.
 		/// </summary>
 		internal long Size
 		{
 			get
 			{
-				if (this._sizeIndex > 0 && this.Match != null
+				if (this._sizeIndex > 0
+				    && this.Match != null
 				    && this.Match.Groups.Count > this._sizeIndex)
 				{
 					long size;
@@ -172,14 +175,15 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The last write time of the object. DateTime.MinValue is returned when this information
-		/// 	is not available.
+		///     The last write time of the object. DateTime.MinValue is returned when this information
+		///     is not available.
 		/// </summary>
 		internal DateTime Modify
 		{
 			get
 			{
-				if (this._modifyIndex > 0 && this.Match != null
+				if (this._modifyIndex > 0
+				    && this.Match != null
 				    && this.Match.Groups.Count > this._modifyIndex)
 				{
 					DateTime date;
@@ -208,13 +212,14 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The mode of the object. null is return when this information is not available.
+		///     The mode of the object. null is return when this information is not available.
 		/// </summary>
 		internal string Mode
 		{
 			get
 			{
-				if (this._modeIndex > 0 && this.Match != null
+				if (this._modeIndex > 0
+				    && this.Match != null
 				    && this.Match.Groups.Count > this._modeIndex)
 				{
 					var value = this.Match.Groups[this._modeIndex].Value;
@@ -225,13 +230,14 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The owner of the object. null is return when this information is not available.
+		///     The owner of the object. null is return when this information is not available.
 		/// </summary>
 		internal string Owner
 		{
 			get
 			{
-				if (this._ownerIndex > 0 && this.Match != null
+				if (this._ownerIndex > 0
+				    && this.Match != null
 				    && this.Match.Groups.Count > this._ownerIndex)
 				{
 					var value = this.Match.Groups[this._ownerIndex].Value;
@@ -242,13 +248,14 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The group of the object. null is return when this information is not available.
+		///     The group of the object. null is return when this information is not available.
 		/// </summary>
 		internal string Group
 		{
 			get
 			{
-				if (this._groupIndex > 0 && this.Match != null
+				if (this._groupIndex > 0
+				    && this.Match != null
 				    && this.Match.Groups.Count > this._groupIndex)
 				{
 					var value = this.Match.Groups[this._groupIndex].Value;
@@ -259,13 +266,14 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The link path of the object in case it is a symlink. null is return when this information is not available.
+		///     The link path of the object in case it is a symlink. null is return when this information is not available.
 		/// </summary>
 		internal string LinkPath
 		{
 			get
 			{
-				if (this._linkPathIndex > 0 && this.Match != null
+				if (this._linkPathIndex > 0
+				    && this.Match != null
 				    && this.Match.Groups.Count > this._linkPathIndex)
 				{
 					var value = this.Match.Groups[this._linkPathIndex].Value;
@@ -276,7 +284,7 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	The match result after calling the Parse() method.
+		///     The match result after calling the Parse() method.
 		/// </summary>
 		private Match Match { get; set; }
 
@@ -298,7 +306,7 @@ namespace sharpLightFtp
 		#endregion
 
 		/// <summary>
-		/// 	Parse the given string
+		///     Parse the given string
 		/// </summary>
 		/// <param name="input"> </param>
 		/// <returns> Returns true on success, false on failure </returns>

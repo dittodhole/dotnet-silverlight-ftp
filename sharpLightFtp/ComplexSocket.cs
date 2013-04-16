@@ -1,8 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
 using sharpLightFtp.EventArgs;
+using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
@@ -23,7 +30,7 @@ namespace sharpLightFtp
 			this._isControlSocket = isControlSocket;
 		}
 
-		public Socket Socket
+		private Socket Socket
 		{
 			get
 			{
@@ -31,7 +38,7 @@ namespace sharpLightFtp
 			}
 		}
 
-		public EndPoint EndPoint
+		private EndPoint EndPoint
 		{
 			get
 			{
@@ -72,7 +79,7 @@ namespace sharpLightFtp
 
 		#endregion
 
-		internal byte[] GetReceiveBuffer()
+		private byte[] GetReceiveBuffer()
 		{
 			var socket = this.Socket;
 			var receiveBufferSize = socket.ReceiveBufferSize;
@@ -81,7 +88,7 @@ namespace sharpLightFtp
 			return buffer;
 		}
 
-		internal byte[] GetSendBuffer()
+		private byte[] GetSendBuffer()
 		{
 			var socket = this.Socket;
 			var sendBufferSize = socket.SendBufferSize;
@@ -93,6 +100,169 @@ namespace sharpLightFtp
 		internal void RaiseFtpCommandFailedAsync(BaseFtpCommandFailedEventArgs e)
 		{
 			this.FtpClient.RaiseFtpCommandFailedAsync(e);
+		}
+
+		internal bool Connect(TimeSpan timeout)
+		{
+			using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
+			{
+				var success = this.DoInternal(socket => socket.ConnectAsync, socketAsyncEventArgs);
+				if (!success)
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		private bool ReceiveChunk(SocketAsyncEventArgs socketAsyncEventArgs)
+		{
+			Contract.Requires(socketAsyncEventArgs != null);
+
+			var success = this.DoInternal(socket => socket.ReceiveAsync, socketAsyncEventArgs);
+
+			return success;
+		}
+
+		private bool DoInternal(Func<Socket, Func<SocketAsyncEventArgs, bool>> predicate, SocketAsyncEventArgs socketAsyncEventArgs)
+		{
+			Contract.Requires(predicate != null);
+			Contract.Requires(socketAsyncEventArgs != null);
+
+			var socket = this.Socket;
+			var socketPredicate = predicate.Invoke(socket);
+			var async = socketPredicate.Invoke(socketAsyncEventArgs);
+			if (async)
+			{
+				var userToken = socketAsyncEventArgs.UserToken;
+				var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
+				var receivedSignalWithinTime = socketAsyncEventArgsUserToken.WaitForSignal();
+				if (!receivedSignalWithinTime)
+				{
+					var ftpCommandFailedEventArgs = new FtpCommandTimedOutEventArgs(socketAsyncEventArgs);
+					this.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
+					return false;
+				}
+			}
+
+			var exception = socketAsyncEventArgs.ConnectByNameError;
+			if (exception != null)
+			{
+				var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketAsyncEventArgs);
+				this.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
+				return false;
+			}
+
+			// TODO maybe a check against socketAsyncEventArgs.SocketError == SocketError.Success would be more correct
+
+			return true;
+		}
+
+		private SocketAsyncEventArgs GetSocketAsyncEventArgs(TimeSpan timeout)
+		{
+			var ftpClient = this.FtpClient;
+			var socketClientAccessPolicyProtocol = ftpClient.SocketClientAccessPolicyProtocol;
+			var endPoint = this.EndPoint;
+			var asyncEventArgsUserToken = new SocketAsyncEventArgsUserToken(this, timeout);
+			var socketAsyncEventArgs = new SocketAsyncEventArgs
+			{
+				RemoteEndPoint = endPoint,
+				SocketClientAccessPolicyProtocol = socketClientAccessPolicyProtocol,
+				UserToken = asyncEventArgsUserToken
+			};
+			socketAsyncEventArgs.Completed += (sender, args) =>
+			{
+				var userToken = args.UserToken;
+				var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
+				socketAsyncEventArgsUserToken.Signal();
+			};
+
+			return socketAsyncEventArgs;
+		}
+
+		internal bool Send(TimeSpan timeout, Stream stream)
+		{
+			Contract.Requires(stream != null);
+
+			var buffer = this.GetSendBuffer();
+			int read;
+			while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+			{
+				var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout);
+				socketAsyncEventArgs.SetBuffer(buffer, 0, read);
+				var success = this.DoInternal(socket => socket.SendAsync, socketAsyncEventArgs);
+				if (!success)
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		internal ComplexResult Receive(TimeSpan timeout, Encoding encoding)
+		{
+			Contract.Requires(encoding != null);
+
+			using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
+			{
+				var responseBuffer = this.GetReceiveBuffer();
+				socketAsyncEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
+				var ftpResponseType = FtpResponseType.None;
+				var messages = new List<string>();
+				var stringResponseCode = string.Empty;
+				var responseCode = 0;
+				var responseMessage = string.Empty;
+
+				while (this.ReceiveChunk(socketAsyncEventArgs))
+				{
+					var data = socketAsyncEventArgs.GetData(encoding);
+					if (string.IsNullOrWhiteSpace(data))
+					{
+						break;
+					}
+					var lines = data.Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+					foreach (var line in lines)
+					{
+						var match = Regex.Match(line, @"^(\d{3})\s(.*)$");
+						if (match.Success)
+						{
+							if (match.Groups.Count > 1)
+							{
+								stringResponseCode = match.Groups[1].Value;
+							}
+							if (match.Groups.Count > 2)
+							{
+								responseMessage = match.Groups[2].Value;
+							}
+							if (!string.IsNullOrWhiteSpace(stringResponseCode))
+							{
+								var firstCharacter = stringResponseCode.First();
+								var currentCulture = Thread.CurrentThread.CurrentCulture;
+								var character = firstCharacter.ToString(currentCulture);
+								var intFtpResponseType = Convert.ToInt32(character);
+								ftpResponseType = (FtpResponseType) intFtpResponseType;
+								responseCode = Int32.Parse(stringResponseCode);
+							}
+						}
+						else
+						{
+							messages.Add(line);
+						}
+					}
+
+					var finished = ftpResponseType != FtpResponseType.None;
+					if (finished)
+					{
+						break;
+					}
+				}
+
+				var complexResult = new ComplexResult(ftpResponseType, responseCode, responseMessage, messages);
+
+				return complexResult;
+			}
 		}
 	}
 }

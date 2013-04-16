@@ -13,7 +13,7 @@ namespace sharpLightFtp
 	public sealed class FtpListItem
 	{
 		/// <summary>
-		/// 	Initializes an empty parser
+		///     Initializes an empty parser
 		/// </summary>
 		private FtpListItem()
 		{
@@ -42,7 +42,7 @@ namespace sharpLightFtp
 		*/
 
 		/// <summary>
-		/// 	Parses a given listing
+		///     Parses a given listing
 		/// </summary>
 		/// <param name="listing"> The single line that needs to be parsed </param>
 		/// <param name="type"> The command that generated the line to be parsed </param>
@@ -69,49 +69,49 @@ namespace sharpLightFtp
 		*/
 
 		/// <summary>
-		/// 	Gets the type of object (File/Directory/Unknown)
+		///     Gets the type of object (File/Directory/Unknown)
 		/// </summary>
 		public FtpObjectType Type { get; private set; }
 
 		/// <summary>
-		/// 	The file/directory name from the listing
+		///     The file/directory name from the listing
 		/// </summary>
 		public string Name { get; private set; }
 
 		/// <summary>
-		/// 	The file size from the listing, default -1
+		///     The file size from the listing, default -1
 		/// </summary>
 		public long Size { get; set; }
 
 		/// <summary>
-		/// 	The file mode from the listing, default 0000
+		///     The file mode from the listing, default 0000
 		/// </summary>
 		public string Mode { get; set; }
 
 		/// <summary>
-		/// 	The last write time from the listing
+		///     The last write time from the listing
 		/// </summary>
 		public DateTime Modify { get; set; }
 
 		/// <summary>
-		/// 	The file's owner from the listing
+		///     The file's owner from the listing
 		/// </summary>
 		public string Owner { get; set; }
 
 		/// <summary>
-		/// 	The file's group from the listing
+		///     The file's group from the listing
 		/// </summary>
 		public string Group { get; set; }
 
 		/// <summary>
-		/// 	The file's link path, if it is a symlink.
+		///     The file's link path, if it is a symlink.
 		/// </summary>
 		public string LinkPath { get; set; }
 
 		#region LIST parsing
 
 		/// <summary>
-		/// 	Parses DOS and UNIX LIST style listings
+		///     Parses DOS and UNIX LIST style listings
 		/// </summary>
 		/// <param name="listing"> </param>
 		private void ParseListListing(string listing)
@@ -197,7 +197,8 @@ namespace sharpLightFtp
 										this.Type = FtpObjectType.Link;
 										this.LinkPath = value.Substring(value.LastIndexOf(':'));
 									}
-									else if (lower == "dir" || lower == "cdir"
+									else if (lower == "dir"
+									         || lower == "cdir"
 									         || lower == "pdir")
 									{
 										this.Type = FtpObjectType.Directory;
@@ -206,15 +207,13 @@ namespace sharpLightFtp
 							}
 							break;
 						case "size":
-							if (this.Size
-							    == -1)
+							if (this.Size == -1)
 							{
 								this.Size = long.Parse(value);
 							}
 							break;
 						case "modify":
-							if (this.Modify
-							    == DateTime.MinValue)
+							if (this.Modify == DateTime.MinValue)
 							{
 								DateTime tmodify;
 								var formats = new[]
@@ -253,7 +252,7 @@ namespace sharpLightFtp
 		#endregion
 
 		/// <summary>
-		/// 	Parses a given listing
+		///     Parses a given listing
 		/// </summary>
 		/// <param name="listing"> The single line that needs to be parsed </param>
 		/// <param name="type"> The command that generated the line to be parsed </param>
@@ -280,7 +279,7 @@ namespace sharpLightFtp
 		}
 
 		/// <summary>
-		/// 	Parses an array of list results
+		///     Parses an array of list results
 		/// </summary>
 		/// <param name="sequence"> Array of list results </param>
 		/// <param name="ftpListType"> The command that generated the list being parsed </param>

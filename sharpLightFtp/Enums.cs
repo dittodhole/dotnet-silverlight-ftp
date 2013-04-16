@@ -7,32 +7,32 @@ namespace sharpLightFtp
 	public enum FtpResponseType
 	{
 		/// <summary>
-		/// 	No response
+		///     No response
 		/// </summary>
 		None = 0,
 
 		/// <summary>
-		/// 	Success
+		///     Success
 		/// </summary>
 		PositivePreliminary = 1,
 
 		/// <summary>
-		/// 	Successs
+		///     Successs
 		/// </summary>
 		PositiveCompletion = 2,
 
 		/// <summary>
-		/// 	Succcess
+		///     Succcess
 		/// </summary>
 		PositiveIntermediate = 3,
 
 		/// <summary>
-		/// 	Temporary failure
+		///     Temporary failure
 		/// </summary>
 		TransientNegativeCompletion = 4,
 
 		/// <summary>
-		/// 	Permanent failure
+		///     Permanent failure
 		/// </summary>
 		PermanentNegativeCompletion = 5
 	}
@@ -41,22 +41,22 @@ namespace sharpLightFtp
 	public enum FtpFeatures
 	{
 		/// <summary>
-		/// 	Features haven't been loaded yet
+		///     Features haven't been loaded yet
 		/// </summary>
 		EMPTY = -1,
 
 		/// <summary>
-		/// 	This server said it doesn't support anything!
+		///     This server said it doesn't support anything!
 		/// </summary>
 		NONE = 0,
 
 		/// <summary>
-		/// 	Supports the MLST command
+		///     Supports the MLST command
 		/// </summary>
 		MLST = 1,
 
 		/// <summary>
-		/// 	Supports the MLSD command
+		///     Supports the MLSD command
 		/// </summary>
 		MLSD = 2,
 		/*
@@ -96,60 +96,60 @@ namespace sharpLightFtp
 		UTF8 = 256,*/
 
 		/// <summary>
-		/// 	PRET Command used in distributed ftp server software DrFTPD
+		///     PRET Command used in distributed ftp server software DrFTPD
 		/// </summary>
 		PRET = 512
 	}
 
 	/// <summary>
-	/// 	The list command to be used on the server
+	///     The list command to be used on the server
 	/// </summary>
 	public enum FtpListType
 	{
 		/// <summary>
-		/// 	Standard hard to parse file listing
+		///     Standard hard to parse file listing
 		/// </summary>
 		LIST,
 
 		/// <summary>
-		/// 	Newer easier to parse file listing
+		///     Newer easier to parse file listing
 		/// </summary>
 		MLSD,
 
 		/// <summary>
-		/// 	Newer easier to parse file listing that returns info on a single
-		/// 	object over the command channel (no data channel required)
+		///     Newer easier to parse file listing that returns info on a single
+		///     object over the command channel (no data channel required)
 		/// </summary>
 		MLST
 	}
 
 	/// <summary>
-	/// 	File system object type
+	///     File system object type
 	/// </summary>
 	public enum FtpObjectType
 	{
 		/// <summary>
-		/// 	A directory.
+		///     A directory.
 		/// </summary>
 		Directory,
 
 		/// <summary>
-		/// 	A file.
+		///     A file.
 		/// </summary>
 		File,
 
 		/// <summary>
-		/// 	A symbolic link.
+		///     A symbolic link.
 		/// </summary>
 		Link,
 
 		/// <summary>
-		/// 	A device.
+		///     A device.
 		/// </summary>
 		Device,
 
 		/// <summary>
-		/// 	No idea.
+		///     No idea.
 		/// </summary>
 		Unknown
 	}

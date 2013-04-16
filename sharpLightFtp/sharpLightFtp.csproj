@@ -99,7 +99,6 @@
     <Compile Include="Extensions\QueueExtensions.cs" />
     <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
     <Compile Include="FtpClient.cs" />
-    <Compile Include="Extensions\FtpClientExtensions.cs" />
     <Compile Include="FtpDirectory.cs" />
     <Compile Include="FtpFile.cs" />
     <Compile Include="FtpFileSystemObject.cs" />

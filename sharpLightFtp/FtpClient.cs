@@ -171,7 +171,7 @@ namespace sharpLightFtp
 				if (this._features.HasFlag(FtpFeatures.PRET))
 				{
 					// On servers that advertise PRET (DrFTPD), the PRET command must be executed before a passive connection is opened.
-					var complexResult = controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, "PRET {0}", concreteCommand);
+					var complexResult = controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, string.Format("PRET {0}", concreteCommand));
 					var success = complexResult.Success;
 					if (!success)
 					{
@@ -240,7 +240,7 @@ namespace sharpLightFtp
 
 			lock (this._lockControlComplexSocket)
 			{
-				complexResult = this._controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, "MKD {0}", path);
+				complexResult = this._controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, string.Format("MKD {0}", path));
 				var success = complexResult.Success;
 
 				return success;
@@ -270,7 +270,7 @@ namespace sharpLightFtp
 					foreach (var element in hierarchy)
 					{
 						var name = element.Name;
-						var complexResult = controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, "CWD {0}", name);
+						var complexResult = controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, string.Format("CWD {0}", name));
 						var ftpResponseType = complexResult.FtpResponseType;
 						switch (ftpResponseType)
 						{
@@ -302,7 +302,7 @@ namespace sharpLightFtp
 					{
 						// sending STOR-command via control socket
 						var fileName = ftpFile.Name;
-						var success = controlComplexSocket.Send(this.SendTimeout, this.Encoding, "STOR {0}", fileName);
+						var success = controlComplexSocket.Send(this.SendTimeout, this.Encoding, string.Format("STOR {0}", fileName));
 						if (!success)
 						{
 							return false;
@@ -487,7 +487,7 @@ namespace sharpLightFtp
 				{
 					var value = matches.Groups[i].Value;
 					byte octet;
-					if (!byte.TryParse(value, out octet))
+					if (!Byte.TryParse(value, out octet))
 					{
 						return null;
 					}
@@ -500,7 +500,7 @@ namespace sharpLightFtp
 					int p1;
 					{
 						var value = matches.Groups[5].Value;
-						if (!int.TryParse(value, out p1))
+						if (!Int32.TryParse(value, out p1))
 						{
 							return null;
 						}
@@ -508,7 +508,7 @@ namespace sharpLightFtp
 					int p2;
 					{
 						var value = matches.Groups[6].Value;
-						if (!int.TryParse(value, out p2))
+						if (!Int32.TryParse(value, out p2))
 						{
 							return null;
 						}
@@ -520,6 +520,24 @@ namespace sharpLightFtp
 				var transferComplexSocket = this.GetTransferComplexSocket(ipAddress, port);
 				return transferComplexSocket;
 			}
+		}
+
+		private ComplexSocket GetControlComplexSocket()
+		{
+			var endPoint = new DnsEndPoint(this.Server, this.Port);
+			var complexSocket = new ComplexSocket(this, endPoint, true);
+
+			return complexSocket;
+		}
+
+		private ComplexSocket GetTransferComplexSocket(IPAddress ipAddress, int port)
+		{
+			Contract.Requires(ipAddress != null);
+
+			var endPoint = new IPEndPoint(ipAddress, port);
+			var complexSocket = new ComplexSocket(this, endPoint, false);
+
+			return complexSocket;
 		}
 	}
 }
