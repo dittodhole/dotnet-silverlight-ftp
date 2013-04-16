@@ -4,6 +4,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -60,6 +61,7 @@ namespace sharpLightFtp
 			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
 			this.SendTimeout = TimeSpan.FromMinutes(5);
 			this.SendAndReceiveTimeout = TimeSpan.FromSeconds(30);
+			this.SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http;
 		}
 
 		public Encoding Encoding { get; set; }
@@ -70,6 +72,7 @@ namespace sharpLightFtp
 		public string Server { get; set; }
 		public string Username { get; set; }
 		public string Password { get; set; }
+		public SocketClientAccessPolicyProtocol SocketClientAccessPolicyProtocol { get; set; }
 
 		public int Port
 		{

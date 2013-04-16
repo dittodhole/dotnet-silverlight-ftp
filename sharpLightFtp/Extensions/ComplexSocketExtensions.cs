@@ -205,12 +205,14 @@ namespace sharpLightFtp.Extensions
 		{
 			Contract.Requires(complexSocket != null);
 
+			var ftpClient = complexSocket.FtpClient;
+			var socketClientAccessPolicyProtocol = ftpClient.SocketClientAccessPolicyProtocol;
 			var endPoint = complexSocket.EndPoint;
 			var asyncEventArgsUserToken = new SocketAsyncEventArgsUserToken(complexSocket, timeout);
 			var socketAsyncEventArgs = new SocketAsyncEventArgs
 			{
 				RemoteEndPoint = endPoint,
-				SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http,
+				SocketClientAccessPolicyProtocol = socketClientAccessPolicyProtocol,
 				UserToken = asyncEventArgsUserToken
 			};
 			socketAsyncEventArgs.Completed += (sender, args) =>
