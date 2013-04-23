@@ -10,4 +10,4 @@ You need to follow this (http://www.pitorque.de/MisterGoodcat/post/Silverlight-5
 
 Licence
 =============
-sharpLightFtp is licenced under WTFPL (http://www.wtfpl.net/), but it would be nice if you link my project-site and inform me about any issues/bugfixes/... found/made, so that I can enhanc my project.
+sharpLightFtp is licenced under WTFPL (http://www.wtfpl.net/), but it would be nice if you link my project-site and inform me about any issues/bugfixes/... found/made, so that I can enhance my project.
