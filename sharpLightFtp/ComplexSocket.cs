@@ -181,7 +181,7 @@ namespace sharpLightFtp
 			return socketAsyncEventArgs;
 		}
 
-		internal bool Send(TimeSpan timeout, Stream stream)
+		internal bool Send(Stream stream, TimeSpan timeout)
 		{
 			Contract.Requires(stream != null);
 
@@ -201,7 +201,7 @@ namespace sharpLightFtp
 			return true;
 		}
 
-		internal ComplexResult Receive(TimeSpan timeout, Encoding encoding)
+		internal ComplexResult Receive(Encoding encoding, TimeSpan timeout)
 		{
 			Contract.Requires(encoding != null);
 

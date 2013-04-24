@@ -171,7 +171,7 @@ namespace sharpLightFtp
 				if (this._features.HasFlag(FtpFeatures.PRET))
 				{
 					// On servers that advertise PRET (DrFTPD), the PRET command must be executed before a passive connection is opened.
-					var complexResult = controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, string.Format("PRET {0}", concreteCommand));
+					var complexResult = controlComplexSocket.SendAndReceive(string.Format("PRET {0}", concreteCommand), this.Encoding, this.SendAndReceiveTimeout);
 					var success = complexResult.Success;
 					if (!success)
 					{
@@ -191,7 +191,7 @@ namespace sharpLightFtp
 				{
 					{
 						// send LIST/MLSD/MLST-command via control socket
-						var complexResult = controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, concreteCommand);
+						var complexResult = controlComplexSocket.SendAndReceive(concreteCommand, this.Encoding, this.SendAndReceiveTimeout);
 						var success = complexResult.Success;
 						if (!success)
 						{
@@ -206,7 +206,7 @@ namespace sharpLightFtp
 							return Enumerable.Empty<string>();
 						}
 
-						var complexResult = transferComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
+						var complexResult = transferComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
 						var messages = complexResult.Messages;
 
 						return messages;
@@ -240,7 +240,7 @@ namespace sharpLightFtp
 
 			lock (this._lockControlComplexSocket)
 			{
-				complexResult = this._controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, string.Format("MKD {0}", path));
+				complexResult = this._controlComplexSocket.SendAndReceive(string.Format("MKD {0}", path), this.Encoding, this.SendAndReceiveTimeout);
 				var success = complexResult.Success;
 
 				return success;
@@ -270,7 +270,7 @@ namespace sharpLightFtp
 					foreach (var element in hierarchy)
 					{
 						var name = element.Name;
-						var complexResult = controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, string.Format("CWD {0}", name));
+						var complexResult = controlComplexSocket.SendAndReceive(string.Format("CWD {0}", name), this.Encoding, this.SendAndReceiveTimeout);
 						var ftpResponseType = complexResult.FtpResponseType;
 						switch (ftpResponseType)
 						{
@@ -302,7 +302,7 @@ namespace sharpLightFtp
 					{
 						// sending STOR-command via control socket
 						var fileName = ftpFile.Name;
-						var success = controlComplexSocket.Send(this.SendTimeout, this.Encoding, string.Format("STOR {0}", fileName));
+						var success = controlComplexSocket.Send(string.Format("STOR {0}", fileName), this.Encoding, this.SendTimeout);
 						if (!success)
 						{
 							return false;
@@ -318,7 +318,7 @@ namespace sharpLightFtp
 					}
 					{
 						// receiving STOR-response via control socket (should be 150/125)
-						var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
+						var complexResult = controlComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
 						var success = complexResult.Success;
 						if (!success)
 						{
@@ -327,7 +327,7 @@ namespace sharpLightFtp
 					}
 					{
 						// sending content via transfer socket
-						var success = transferComplexSocket.Send(this.SendTimeout, stream);
+						var success = transferComplexSocket.Send(stream, this.SendTimeout);
 						if (!success)
 						{
 							return false;
@@ -339,7 +339,7 @@ namespace sharpLightFtp
 					FtpResponseType ftpResponseType;
 					do
 					{
-						var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
+						var complexResult = controlComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
 						var success = complexResult.Success;
 						if (!success)
 						{
@@ -385,12 +385,12 @@ namespace sharpLightFtp
 					queue.Enqueue(() => controlComplexSocket.Connect(this.ConnectTimeout));
 					queue.Enqueue(() =>
 					{
-						var complexResult = controlComplexSocket.Receive(this.ReceiveTimeout, this.Encoding);
+						var complexResult = controlComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
 						var success = complexResult.Success;
 
 						return success;
 					});
-					queue.Enqueue(() => controlComplexSocket.Authenticate(this.SendAndReceiveTimeout, this.Encoding, this.Username, this.Password));
+					queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding, this.SendAndReceiveTimeout));
 				}
 
 				{
@@ -420,7 +420,7 @@ namespace sharpLightFtp
 					return true;
 				}
 
-				var complexResult = this._controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, "FEAT");
+				var complexResult = this._controlComplexSocket.SendAndReceive("FEAT", this.Encoding, this.SendAndReceiveTimeout);
 				var success = complexResult.Success;
 				if (!success)
 				{
@@ -465,7 +465,7 @@ namespace sharpLightFtp
 					return null;
 				}
 
-				var complexResult = this._controlComplexSocket.SendAndReceive(this.SendAndReceiveTimeout, this.Encoding, "PASV");
+				var complexResult = this._controlComplexSocket.SendAndReceive("PASV", this.Encoding, this.SendAndReceiveTimeout);
 				var success = complexResult.Success;
 				if (!success)
 				{
