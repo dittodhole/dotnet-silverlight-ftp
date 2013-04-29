@@ -88,6 +88,7 @@
   <ItemGroup>
     <Compile Include="ComplexResult.cs" />
     <Compile Include="ComplexSocket.cs" />
+    <Compile Include="ComplexSocketTasks.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="EventArgs\BaseFtpCommandFailedEventArgs.cs" />
     <Compile Include="EventArgs\BaseFtpCommandWithSocketEventArgsFailedEventArgs.cs" />
