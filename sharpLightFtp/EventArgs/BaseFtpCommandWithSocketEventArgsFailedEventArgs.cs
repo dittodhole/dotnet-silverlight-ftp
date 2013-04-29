@@ -16,8 +16,7 @@ namespace sharpLightFtp.EventArgs
 		{
 			Contract.Requires(socketAsyncEventArgs != null);
 
-			// TODO clear things out: is it a good idea to keep socketAsyncEventArgs in here,
-			// because we are firing off the using eventHandler asynchronously
+			// TODO clear things out: is it a good idea to keep socketAsyncEventArgs in here, because we are firing off the using eventHandler asynchronously
 
 			var userToken = socketAsyncEventArgs.UserToken;
 			var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
