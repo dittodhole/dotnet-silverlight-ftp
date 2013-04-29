@@ -9,7 +9,8 @@ namespace sharpLightFtp.EventArgs
 		private readonly ComplexSocket _complexSocket;
 		private readonly string _message;
 
-		internal FtpAuthenticationFailedEventArgs(ComplexSocket complexSocket, string message)
+		internal FtpAuthenticationFailedEventArgs(ComplexSocket complexSocket,
+		                                          string message)
 		{
 			Contract.Requires(complexSocket != null);
 

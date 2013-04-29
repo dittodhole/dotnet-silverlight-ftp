@@ -21,19 +21,28 @@ namespace sharpLightFtp
 		private FtpFeatures _features = FtpFeatures.EMPTY;
 		private int _port;
 
-		public FtpClient(string username, string password, string server, int port)
-			: this(username, password, server)
+		public FtpClient(string username,
+		                 string password,
+		                 string server,
+		                 int port)
+			: this(username,
+			       password,
+			       server)
 		{
 			this.Port = port;
 		}
 
-		public FtpClient(string username, string password, string server)
-			: this(username, password)
+		public FtpClient(string username,
+		                 string password,
+		                 string server)
+			: this(username,
+			       password)
 		{
 			this.Server = server;
 		}
 
-		public FtpClient(string username, string password)
+		public FtpClient(string username,
+		                 string password)
 			: this()
 		{
 			this.Username = username;
@@ -44,7 +53,8 @@ namespace sharpLightFtp
 			: this()
 		{
 			Contract.Requires(uri != null);
-			Contract.Requires(string.Equals(uri.Scheme, Uri.UriSchemeFtp));
+			Contract.Requires(string.Equals(uri.Scheme,
+			                                Uri.UriSchemeFtp));
 
 			var uriBuilder = new UriBuilder(uri);
 
@@ -60,7 +70,6 @@ namespace sharpLightFtp
 			this.ConnectTimeout = TimeSpan.FromSeconds(30);
 			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
 			this.SendTimeout = TimeSpan.FromMinutes(5);
-			this.SendAndReceiveTimeout = TimeSpan.FromSeconds(30);
 			this.SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http;
 		}
 
@@ -68,7 +77,6 @@ namespace sharpLightFtp
 		public TimeSpan ConnectTimeout { get; set; }
 		public TimeSpan ReceiveTimeout { get; set; }
 		public TimeSpan SendTimeout { get; set; }
-		public TimeSpan SendAndReceiveTimeout { get; set; }
 		public string Server { get; set; }
 		public string Username { get; set; }
 		public string Password { get; set; }
@@ -111,7 +119,8 @@ namespace sharpLightFtp
 			var handler = this.FtpCommandFailed;
 			if (handler != null)
 			{
-				Task.Factory.StartNew(() => handler.Invoke(this, e));
+				Task.Factory.StartNew(() => handler.Invoke(this,
+				                                           e));
 			}
 		}
 
@@ -131,13 +140,16 @@ namespace sharpLightFtp
 				ftpListType = FtpListType.LIST;
 			}
 
-			var rawListing = this.GetRawListing(path, ftpListType);
-			var ftpListItems = FtpListItem.ParseList(rawListing, ftpListType);
+			var rawListing = this.GetRawListing(path,
+			                                    ftpListType);
+			var ftpListItems = FtpListItem.ParseList(rawListing,
+			                                         ftpListType);
 
 			return ftpListItems;
 		}
 
-		public IEnumerable<string> GetRawListing(string path, FtpListType ftpListType)
+		public IEnumerable<string> GetRawListing(string path,
+		                                         FtpListType ftpListType)
 		{
 			{
 				var success = this.BasicConnect();
@@ -165,17 +177,32 @@ namespace sharpLightFtp
 						throw new NotImplementedException();
 				}
 
-				var concreteCommand = string.Format("{0} {1}", command, path);
+				var concreteCommand = string.Format("{0} {1}",
+				                                    command,
+				                                    path);
 
 				var controlComplexSocket = this._controlComplexSocket;
 				if (this._features.HasFlag(FtpFeatures.PRET))
 				{
 					// On servers that advertise PRET (DrFTPD), the PRET command must be executed before a passive connection is opened.
-					var complexResult = controlComplexSocket.SendAndReceive(string.Format("PRET {0}", concreteCommand), this.Encoding, this.SendAndReceiveTimeout);
-					var success = complexResult.Success;
-					if (!success)
 					{
-						return Enumerable.Empty<string>();
+						var success = controlComplexSocket.Send(string.Format("PRET {0}",
+						                                                      concreteCommand),
+						                                        this.Encoding,
+						                                        this.SendTimeout);
+						if (!success)
+						{
+							return Enumerable.Empty<string>();
+						}
+					}
+					{
+						var complexResult = controlComplexSocket.Receive(this.Encoding,
+						                                                 this.ReceiveTimeout);
+						var success = complexResult.Success;
+						if (!success)
+						{
+							return Enumerable.Empty<string>();
+						}
 					}
 				}
 
@@ -191,11 +218,23 @@ namespace sharpLightFtp
 				{
 					{
 						// send LIST/MLSD/MLST-command via control socket
-						var complexResult = controlComplexSocket.SendAndReceive(concreteCommand, this.Encoding, this.SendAndReceiveTimeout);
-						var success = complexResult.Success;
-						if (!success)
 						{
-							return Enumerable.Empty<string>();
+							var success = controlComplexSocket.Send(concreteCommand,
+							                                        this.Encoding,
+							                                        this.SendTimeout);
+							if (!success)
+							{
+								return Enumerable.Empty<string>();
+							}
+						}
+						{
+							var complexResult = controlComplexSocket.Receive(this.Encoding,
+							                                                 this.ReceiveTimeout);
+							var success = complexResult.Success;
+							if (!success)
+							{
+								return Enumerable.Empty<string>();
+							}
 						}
 					}
 					{
@@ -206,7 +245,8 @@ namespace sharpLightFtp
 							return Enumerable.Empty<string>();
 						}
 
-						var complexResult = transferComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
+						var complexResult = transferComplexSocket.Receive(this.Encoding,
+						                                                  this.ReceiveTimeout);
 						var messages = complexResult.Messages;
 
 						return messages;
@@ -220,12 +260,14 @@ namespace sharpLightFtp
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
 			ComplexResult complexResult;
-			var success = this.TryCreateDirectoryInternal(path, out complexResult);
+			var success = this.TryCreateDirectoryInternal(path,
+			                                              out complexResult);
 
 			return success;
 		}
 
-		private bool TryCreateDirectoryInternal(string path, out ComplexResult complexResult)
+		private bool TryCreateDirectoryInternal(string path,
+		                                        out ComplexResult complexResult)
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
@@ -240,14 +282,29 @@ namespace sharpLightFtp
 
 			lock (this._lockControlComplexSocket)
 			{
-				complexResult = this._controlComplexSocket.SendAndReceive(string.Format("MKD {0}", path), this.Encoding, this.SendAndReceiveTimeout);
-				var success = complexResult.Success;
+				{
+					var success = this._controlComplexSocket.Send(string.Format("MKD {0}",
+					                                                            path),
+					                                              this.Encoding,
+					                                              this.SendTimeout);
+					if (!success)
+					{
+						complexResult = null;
+						return false;
+					}
+				}
+				{
+					complexResult = this._controlComplexSocket.Receive(this.Encoding,
+					                                                   this.ReceiveTimeout);
+					var success = complexResult.Success;
 
-				return success;
+					return success;
+				}
 			}
 		}
 
-		public bool Upload(Stream stream, FtpFile ftpFile)
+		public bool Upload(Stream stream,
+		                   FtpFile ftpFile)
 		{
 			Contract.Requires(stream != null);
 			Contract.Requires(stream.CanRead);
@@ -265,19 +322,32 @@ namespace sharpLightFtp
 			{
 				var controlComplexSocket = this._controlComplexSocket;
 				{
-					var hierarchy = ftpFile.GetHierarchy().Reverse();
+					var hierarchy = ftpFile.GetHierarchy()
+					                       .Reverse();
 
 					foreach (var element in hierarchy)
 					{
 						var name = element.Name;
-						var complexResult = controlComplexSocket.SendAndReceive(string.Format("CWD {0}", name), this.Encoding, this.SendAndReceiveTimeout);
+						{
+							var success = controlComplexSocket.Send(string.Format("CWD {0}",
+							                                                      name),
+							                                        this.Encoding,
+							                                        this.SendTimeout);
+							if (!success)
+							{
+								return false;
+							}
+						}
+						var complexResult = controlComplexSocket.Receive(this.Encoding,
+						                                                 this.ReceiveTimeout);
 						var ftpResponseType = complexResult.FtpResponseType;
 						switch (ftpResponseType)
 						{
 							case FtpResponseType.PermanentNegativeCompletion:
 								// some parsing of the actual ComplexResult.ResponseCode should be done in here
 								// i assume 5xx-state means "directory does not exist" all the time, which might be wrong
-								var success = this.TryCreateDirectoryInternal(name, out complexResult);
+								var success = this.TryCreateDirectoryInternal(name,
+								                                              out complexResult);
 								if (!success)
 								{
 									return false;
@@ -302,7 +372,10 @@ namespace sharpLightFtp
 					{
 						// sending STOR-command via control socket
 						var fileName = ftpFile.Name;
-						var success = controlComplexSocket.Send(string.Format("STOR {0}", fileName), this.Encoding, this.SendTimeout);
+						var success = controlComplexSocket.Send(string.Format("STOR {0}",
+						                                                      fileName),
+						                                        this.Encoding,
+						                                        this.SendTimeout);
 						if (!success)
 						{
 							return false;
@@ -318,7 +391,8 @@ namespace sharpLightFtp
 					}
 					{
 						// receiving STOR-response via control socket (should be 150/125)
-						var complexResult = controlComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
+						var complexResult = controlComplexSocket.Receive(this.Encoding,
+						                                                 this.ReceiveTimeout);
 						var success = complexResult.Success;
 						if (!success)
 						{
@@ -327,7 +401,8 @@ namespace sharpLightFtp
 					}
 					{
 						// sending content via transfer socket
-						var success = transferComplexSocket.Send(stream, this.SendTimeout);
+						var success = transferComplexSocket.Send(stream,
+						                                         this.SendTimeout);
 						if (!success)
 						{
 							return false;
@@ -339,7 +414,8 @@ namespace sharpLightFtp
 					FtpResponseType ftpResponseType;
 					do
 					{
-						var complexResult = controlComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
+						var complexResult = controlComplexSocket.Receive(this.Encoding,
+						                                                 this.ReceiveTimeout);
 						var success = complexResult.Success;
 						if (!success)
 						{
@@ -385,12 +461,17 @@ namespace sharpLightFtp
 					queue.Enqueue(() => controlComplexSocket.Connect(this.ConnectTimeout));
 					queue.Enqueue(() =>
 					{
-						var complexResult = controlComplexSocket.Receive(this.Encoding, this.ReceiveTimeout);
+						var complexResult = controlComplexSocket.Receive(this.Encoding,
+						                                                 this.ReceiveTimeout);
 						var success = complexResult.Success;
 
 						return success;
 					});
-					queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username, this.Password, this.Encoding, this.SendAndReceiveTimeout));
+					queue.Enqueue(() => controlComplexSocket.Authenticate(this.Username,
+					                                                      this.Password,
+					                                                      this.Encoding,
+					                                                      this.SendTimeout,
+					                                                      this.ReceiveTimeout));
 				}
 
 				{
@@ -420,33 +501,47 @@ namespace sharpLightFtp
 					return true;
 				}
 
-				var complexResult = this._controlComplexSocket.SendAndReceive("FEAT", this.Encoding, this.SendAndReceiveTimeout);
-				var success = complexResult.Success;
-				if (!success)
 				{
-					return false;
-				}
-
-				this._features = FtpFeatures.NONE;
-
-				var complexEnums = (from name in Enum.GetNames(this._typeOfFtpFeatures)
-				                    let enumName = name.ToUpper()
-				                    let enumValue = Enum.Parse(this._typeOfFtpFeatures, enumName, true)
-				                    select new
-				                    {
-					                    EnumName = enumName,
-					                    EnumValue = (FtpFeatures) enumValue
-				                    }).ToList();
-				foreach (var message in complexResult.Messages)
-				{
-					var upperMessage = message.ToUpper();
-					foreach (var complexEnum in complexEnums)
+					var success = this._controlComplexSocket.Send("FEAT",
+					                                              this.Encoding,
+					                                              this.SendTimeout);
+					if (!success)
 					{
-						var enumName = complexEnum.EnumName;
-						if (upperMessage.Contains(enumName))
+						return false;
+					}
+				}
+				{
+					var complexResult = this._controlComplexSocket.Receive(this.Encoding,
+					                                                       this.ReceiveTimeout);
+					var success = complexResult.Success;
+					if (!success)
+					{
+						return false;
+					}
+
+					this._features = FtpFeatures.NONE;
+
+					var complexEnums = (from name in Enum.GetNames(this._typeOfFtpFeatures)
+					                    let enumName = name.ToUpper()
+					                    let enumValue = Enum.Parse(this._typeOfFtpFeatures,
+					                                               enumName,
+					                                               true)
+					                    select new
+					                    {
+						                    EnumName = enumName,
+						                    EnumValue = (FtpFeatures) enumValue
+					                    }).ToList();
+					foreach (var message in complexResult.Messages)
+					{
+						var upperMessage = message.ToUpper();
+						foreach (var complexEnum in complexEnums)
 						{
-							var enumValue = complexEnum.EnumValue;
-							this._features |= enumValue;
+							var enumName = complexEnum.EnumName;
+							if (upperMessage.Contains(enumName))
+							{
+								var enumValue = complexEnum.EnumValue;
+								this._features |= enumValue;
+							}
 						}
 					}
 				}
@@ -465,77 +560,101 @@ namespace sharpLightFtp
 					return null;
 				}
 
-				var complexResult = this._controlComplexSocket.SendAndReceive("PASV", this.Encoding, this.SendAndReceiveTimeout);
-				var success = complexResult.Success;
-				if (!success)
 				{
-					return null;
-				}
-
-				var matches = Regex.Match(complexResult.ResponseMessage, "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
-				if (!matches.Success)
-				{
-					return null;
-				}
-				if (matches.Groups.Count != 7)
-				{
-					return null;
-				}
-
-				var octets = new byte[4];
-				for (var i = 1; i <= 4; i++)
-				{
-					var value = matches.Groups[i].Value;
-					byte octet;
-					if (!Byte.TryParse(value, out octet))
+					var success = this._controlComplexSocket.Send("PASV",
+					                                              this.Encoding,
+					                                              this.SendTimeout);
+					if (!success)
 					{
 						return null;
 					}
-					octets[i - 1] = octet;
 				}
-
-				var ipAddress = new IPAddress(octets);
-				int port;
 				{
-					int p1;
+					var complexResult = this._controlComplexSocket.Receive(this.Encoding,
+					                                                       this.ReceiveTimeout);
+					var success = complexResult.Success;
+					if (!success)
 					{
-						var value = matches.Groups[5].Value;
-						if (!Int32.TryParse(value, out p1))
-						{
-							return null;
-						}
+						return null;
 					}
-					int p2;
-					{
-						var value = matches.Groups[6].Value;
-						if (!Int32.TryParse(value, out p2))
-						{
-							return null;
-						}
-					}
-					//port = p1 * 256 + p2;
-					port = (p1 << 8) + p2;
-				}
 
-				var transferComplexSocket = this.GetTransferComplexSocket(ipAddress, port);
-				return transferComplexSocket;
+					var matches = Regex.Match(complexResult.ResponseMessage,
+					                          "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
+					if (!matches.Success)
+					{
+						return null;
+					}
+					if (matches.Groups.Count != 7)
+					{
+						return null;
+					}
+
+					var octets = new byte[4];
+					for (var i = 1; i <= 4; i++)
+					{
+						var value = matches.Groups[i].Value;
+						byte octet;
+						if (!Byte.TryParse(value,
+						                   out octet))
+						{
+							return null;
+						}
+						octets[i - 1] = octet;
+					}
+
+					var ipAddress = new IPAddress(octets);
+					int port;
+					{
+						int p1;
+						{
+							var value = matches.Groups[5].Value;
+							if (!Int32.TryParse(value,
+							                    out p1))
+							{
+								return null;
+							}
+						}
+						int p2;
+						{
+							var value = matches.Groups[6].Value;
+							if (!Int32.TryParse(value,
+							                    out p2))
+							{
+								return null;
+							}
+						}
+						//port = p1 * 256 + p2;
+						port = (p1 << 8) + p2;
+					}
+
+					var transferComplexSocket = this.GetTransferComplexSocket(ipAddress,
+					                                                          port);
+					return transferComplexSocket;
+				}
 			}
 		}
 
 		private ComplexSocket GetControlComplexSocket()
 		{
-			var endPoint = new DnsEndPoint(this.Server, this.Port);
-			var complexSocket = new ComplexSocket(this, endPoint, true);
+			var endPoint = new DnsEndPoint(this.Server,
+			                               this.Port);
+			var complexSocket = new ComplexSocket(this,
+			                                      endPoint,
+			                                      true);
 
 			return complexSocket;
 		}
 
-		private ComplexSocket GetTransferComplexSocket(IPAddress ipAddress, int port)
+		private ComplexSocket GetTransferComplexSocket(IPAddress ipAddress,
+		                                               int port)
 		{
 			Contract.Requires(ipAddress != null);
 
-			var endPoint = new IPEndPoint(ipAddress, port);
-			var complexSocket = new ComplexSocket(this, endPoint, false);
+			var endPoint = new IPEndPoint(ipAddress,
+			                              port);
+			var complexSocket = new ComplexSocket(this,
+			                                      endPoint,
+			                                      false);
 
 			return complexSocket;
 		}

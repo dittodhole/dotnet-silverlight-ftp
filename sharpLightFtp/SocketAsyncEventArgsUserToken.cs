@@ -10,7 +10,8 @@ namespace sharpLightFtp
 		private readonly ComplexSocket _complexSocket;
 		private readonly TimeSpan _timeout;
 
-		internal SocketAsyncEventArgsUserToken(ComplexSocket complexSocket, TimeSpan timeout)
+		internal SocketAsyncEventArgsUserToken(ComplexSocket complexSocket,
+		                                       TimeSpan timeout)
 		{
 			Contract.Requires(complexSocket != null);
 

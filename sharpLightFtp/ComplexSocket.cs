@@ -18,9 +18,14 @@ namespace sharpLightFtp
 		private readonly EndPoint _endPoint;
 		private readonly FtpClient _ftpClient;
 		private readonly bool _isControlSocket;
-		private readonly Socket _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-		internal ComplexSocket(FtpClient ftpClient, EndPoint endPoint, bool isControlSocket)
+		private readonly Socket _socket = new Socket(AddressFamily.InterNetwork,
+		                                             SocketType.Stream,
+		                                             ProtocolType.Tcp);
+
+		internal ComplexSocket(FtpClient ftpClient,
+		                       EndPoint endPoint,
+		                       bool isControlSocket)
 		{
 			Contract.Requires(ftpClient != null);
 			Contract.Requires(endPoint != null);
@@ -106,7 +111,8 @@ namespace sharpLightFtp
 		{
 			using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
 			{
-				var success = this.DoInternal(socket => socket.ConnectAsync, socketAsyncEventArgs);
+				var success = this.DoInternal(socket => socket.ConnectAsync,
+				                              socketAsyncEventArgs);
 				if (!success)
 				{
 					return false;
@@ -120,12 +126,14 @@ namespace sharpLightFtp
 		{
 			Contract.Requires(socketAsyncEventArgs != null);
 
-			var success = this.DoInternal(socket => socket.ReceiveAsync, socketAsyncEventArgs);
+			var success = this.DoInternal(socket => socket.ReceiveAsync,
+			                              socketAsyncEventArgs);
 
 			return success;
 		}
 
-		private bool DoInternal(Func<Socket, Func<SocketAsyncEventArgs, bool>> predicate, SocketAsyncEventArgs socketAsyncEventArgs)
+		private bool DoInternal(Func<Socket, Func<SocketAsyncEventArgs, bool>> predicate,
+		                        SocketAsyncEventArgs socketAsyncEventArgs)
 		{
 			Contract.Requires(predicate != null);
 			Contract.Requires(socketAsyncEventArgs != null);
@@ -164,14 +172,16 @@ namespace sharpLightFtp
 			var ftpClient = this.FtpClient;
 			var socketClientAccessPolicyProtocol = ftpClient.SocketClientAccessPolicyProtocol;
 			var endPoint = this.EndPoint;
-			var asyncEventArgsUserToken = new SocketAsyncEventArgsUserToken(this, timeout);
+			var asyncEventArgsUserToken = new SocketAsyncEventArgsUserToken(this,
+			                                                                timeout);
 			var socketAsyncEventArgs = new SocketAsyncEventArgs
 			{
 				RemoteEndPoint = endPoint,
 				SocketClientAccessPolicyProtocol = socketClientAccessPolicyProtocol,
 				UserToken = asyncEventArgsUserToken
 			};
-			socketAsyncEventArgs.Completed += (sender, args) =>
+			socketAsyncEventArgs.Completed += (sender,
+			                                   args) =>
 			{
 				var userToken = args.UserToken;
 				var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
@@ -181,17 +191,23 @@ namespace sharpLightFtp
 			return socketAsyncEventArgs;
 		}
 
-		internal bool Send(Stream stream, TimeSpan timeout)
+		internal bool Send(Stream stream,
+		                   TimeSpan timeout)
 		{
 			Contract.Requires(stream != null);
 
 			var buffer = this.GetSendBuffer();
 			int read;
-			while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+			while ((read = stream.Read(buffer,
+			                           0,
+			                           buffer.Length)) > 0)
 			{
 				var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout);
-				socketAsyncEventArgs.SetBuffer(buffer, 0, read);
-				var success = this.DoInternal(socket => socket.SendAsync, socketAsyncEventArgs);
+				socketAsyncEventArgs.SetBuffer(buffer,
+				                               0,
+				                               read);
+				var success = this.DoInternal(socket => socket.SendAsync,
+				                              socketAsyncEventArgs);
 				if (!success)
 				{
 					return false;
@@ -201,14 +217,17 @@ namespace sharpLightFtp
 			return true;
 		}
 
-		internal ComplexResult Receive(Encoding encoding, TimeSpan timeout)
+		internal ComplexResult Receive(Encoding encoding,
+		                               TimeSpan timeout)
 		{
 			Contract.Requires(encoding != null);
 
 			using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
 			{
 				var responseBuffer = this.GetReceiveBuffer();
-				socketAsyncEventArgs.SetBuffer(responseBuffer, 0, responseBuffer.Length);
+				socketAsyncEventArgs.SetBuffer(responseBuffer,
+				                               0,
+				                               responseBuffer.Length);
 				var ftpResponseType = FtpResponseType.None;
 				var messages = new List<string>();
 				var stringResponseCode = string.Empty;
@@ -222,10 +241,12 @@ namespace sharpLightFtp
 					{
 						break;
 					}
-					var lines = data.Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+					var lines = data.Split(Environment.NewLine.ToCharArray(),
+					                       StringSplitOptions.RemoveEmptyEntries);
 					foreach (var line in lines)
 					{
-						var match = Regex.Match(line, @"^(\d{3})\s(.*)$");
+						var match = Regex.Match(line,
+						                        @"^(\d{3})\s(.*)$");
 						if (match.Success)
 						{
 							if (match.Groups.Count > 1)
@@ -259,7 +280,10 @@ namespace sharpLightFtp
 					}
 				}
 
-				var complexResult = new ComplexResult(ftpResponseType, responseCode, responseMessage, messages);
+				var complexResult = new ComplexResult(ftpResponseType,
+				                                      responseCode,
+				                                      responseMessage,
+				                                      messages);
 
 				return complexResult;
 			}

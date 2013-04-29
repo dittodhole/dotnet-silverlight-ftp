@@ -12,9 +12,7 @@ namespace sharpLightFtp
 	[DebuggerDisplay("Type: {Type} Name: {Name} Size: {Size}: Modify: {Modify}")]
 	public sealed class FtpListItem
 	{
-		/// <summary>
-		///     Initializes an empty parser
-		/// </summary>
+		/// <summary>Initializes an empty parser</summary>
 		private FtpListItem()
 		{
 			this.Type = FtpObjectType.Unknown;
@@ -41,15 +39,15 @@ namespace sharpLightFtp
 		}
 		*/
 
-		/// <summary>
-		///     Parses a given listing
-		/// </summary>
+		/// <summary>Parses a given listing</summary>
 		/// <param name="listing"> The single line that needs to be parsed </param>
 		/// <param name="type"> The command that generated the line to be parsed </param>
-		private FtpListItem(string listing, FtpListType type)
+		private FtpListItem(string listing,
+		                    FtpListType type)
 			: this()
 		{
-			this.Parse(listing, type);
+			this.Parse(listing,
+			           type);
 		}
 
 		/*
@@ -68,51 +66,33 @@ namespace sharpLightFtp
 		}
 		*/
 
-		/// <summary>
-		///     Gets the type of object (File/Directory/Unknown)
-		/// </summary>
+		/// <summary>Gets the type of object (File/Directory/Unknown)</summary>
 		public FtpObjectType Type { get; private set; }
 
-		/// <summary>
-		///     The file/directory name from the listing
-		/// </summary>
+		/// <summary>The file/directory name from the listing</summary>
 		public string Name { get; private set; }
 
-		/// <summary>
-		///     The file size from the listing, default -1
-		/// </summary>
+		/// <summary>The file size from the listing, default -1</summary>
 		public long Size { get; set; }
 
-		/// <summary>
-		///     The file mode from the listing, default 0000
-		/// </summary>
+		/// <summary>The file mode from the listing, default 0000</summary>
 		public string Mode { get; set; }
 
-		/// <summary>
-		///     The last write time from the listing
-		/// </summary>
+		/// <summary>The last write time from the listing</summary>
 		public DateTime Modify { get; set; }
 
-		/// <summary>
-		///     The file's owner from the listing
-		/// </summary>
+		/// <summary>The file's owner from the listing</summary>
 		public string Owner { get; set; }
 
-		/// <summary>
-		///     The file's group from the listing
-		/// </summary>
+		/// <summary>The file's group from the listing</summary>
 		public string Group { get; set; }
 
-		/// <summary>
-		///     The file's link path, if it is a symlink.
-		/// </summary>
+		/// <summary>The file's link path, if it is a symlink.</summary>
 		public string LinkPath { get; set; }
 
 		#region LIST parsing
 
-		/// <summary>
-		///     Parses DOS and UNIX LIST style listings
-		/// </summary>
+		/// <summary>Parses DOS and UNIX LIST style listings</summary>
 		/// <param name="listing"> </param>
 		private void ParseListListing(string listing)
 		{
@@ -146,7 +126,9 @@ namespace sharpLightFtp
 			var regularExpression = new Regex(@"(.+?)=(.*?);|  ?(.+?)$");
 			Match match;
 
-			if (Regex.Match(listing, "^[0-9]+").Success)
+			if (Regex.Match(listing,
+			                "^[0-9]+")
+			         .Success)
 			{
 				// this is probably info messages, don't try to parse it
 				return;
@@ -181,7 +163,8 @@ namespace sharpLightFtp
 
 					// key=value pair
 					var value = matches[1];
-					switch (key.Trim().ToLower())
+					switch (key.Trim()
+					           .ToLower())
 					{
 						case "type":
 							switch (this.Type)
@@ -220,7 +203,11 @@ namespace sharpLightFtp
 								{
 									"yyyyMMddHHmmss", "yyyyMMddHHmmss.fff"
 								};
-								if (DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out tmodify))
+								if (DateTime.TryParseExact(value,
+								                           formats,
+								                           CultureInfo.InvariantCulture,
+								                           DateTimeStyles.AssumeLocal,
+								                           out tmodify))
 								{
 									this.Modify = tmodify;
 								}
@@ -251,12 +238,11 @@ namespace sharpLightFtp
 
 		#endregion
 
-		/// <summary>
-		///     Parses a given listing
-		/// </summary>
+		/// <summary>Parses a given listing</summary>
 		/// <param name="listing"> The single line that needs to be parsed </param>
 		/// <param name="type"> The command that generated the line to be parsed </param>
-		private bool Parse(string listing, FtpListType type)
+		private bool Parse(string listing,
+		                   FtpListType type)
 		{
 			if (type == FtpListType.MLSD
 			    || type == FtpListType.MLST)
@@ -269,7 +255,8 @@ namespace sharpLightFtp
 			}
 			else
 			{
-				var message = string.Format("{0} style formats are not supported.", type);
+				var message = string.Format("{0} style formats are not supported.",
+				                            type);
 				throw new NotImplementedException(message);
 			}
 
@@ -278,16 +265,16 @@ namespace sharpLightFtp
 			return success;
 		}
 
-		/// <summary>
-		///     Parses an array of list results
-		/// </summary>
+		/// <summary>Parses an array of list results</summary>
 		/// <param name="sequence"> Array of list results </param>
 		/// <param name="ftpListType"> The command that generated the list being parsed </param>
 		/// <returns> </returns>
-		public static IEnumerable<FtpListItem> ParseList(IEnumerable<string> sequence, FtpListType ftpListType)
+		public static IEnumerable<FtpListItem> ParseList(IEnumerable<string> sequence,
+		                                                 FtpListType ftpListType)
 		{
 			return from item in sequence
-			       let ftpListItem = new FtpListItem(item, ftpListType)
+			       let ftpListItem = new FtpListItem(item,
+			                                         ftpListType)
 			       where ftpListItem.Type != FtpObjectType.Unknown
 			       select ftpListItem;
 		}

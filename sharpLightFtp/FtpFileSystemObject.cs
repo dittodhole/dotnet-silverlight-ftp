@@ -24,7 +24,8 @@ namespace sharpLightFtp
 				{
 					return null;
 				}
-				if (string.Equals(path, "\\"))
+				if (string.Equals(path,
+				                  "\\"))
 				{
 					return null;
 				}
@@ -42,7 +43,8 @@ namespace sharpLightFtp
 			}
 			set
 			{
-				this._fullName = Path.Combine(this._fullName ?? string.Empty, value);
+				this._fullName = Path.Combine(this._fullName ?? string.Empty,
+				                              value);
 			}
 		}
 
@@ -50,7 +52,8 @@ namespace sharpLightFtp
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(this._fullName));
 
-			if (string.Equals(this._fullName, "/"))
+			if (string.Equals(this._fullName,
+			                  "/"))
 			{
 				return null;
 			}
@@ -66,8 +69,11 @@ namespace sharpLightFtp
 
 		protected virtual string CleanPath(string path)
 		{
-			var firstClean = path.Replace('\\', '/');
-			var cleanedPath = Regex.Replace(firstClean, @"/+", "/");
+			var firstClean = path.Replace('\\',
+			                              '/');
+			var cleanedPath = Regex.Replace(firstClean,
+			                                @"/+",
+			                                "/");
 
 			return cleanedPath;
 		}
