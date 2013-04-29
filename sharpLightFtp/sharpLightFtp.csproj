@@ -97,7 +97,6 @@
     <Compile Include="Extensions\ComplexSocketExtensions.cs" />
     <Compile Include="EventArgs\FtpCommandFailedEventArgs.cs" />
     <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
-    <Compile Include="Extensions\QueueExtensions.cs" />
     <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
     <Compile Include="FtpClient.cs" />
     <Compile Include="FtpDirectory.cs" />
