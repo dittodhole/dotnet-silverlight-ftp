@@ -39,7 +39,11 @@ namespace sharpLightFtp
 		EPRT = 1 << 6,
 		MDTMDIR = 1 << 8,
 		UTF8 = 1 << 9,
-		PRET = 1 << 10
+		PRET = 1 << 10,
+		MFMT = 1 << 11,
+		MFCT = 1 << 12,
+		MFF = 1 << 13,
+		STAT = 1 << 14
 	}
 
 	public enum FtpListType
