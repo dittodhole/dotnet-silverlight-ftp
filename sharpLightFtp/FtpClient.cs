@@ -15,9 +15,9 @@ namespace sharpLightFtp
 {
 	public sealed class FtpClient : IDisposable
 	{
+		private readonly Lazy<FtpFeatures> _ftpFeatures;
 		private readonly object _lockControlComplexSocket = new object();
 		private ComplexSocket _controlComplexSocket;
-		private FtpFeatures _features = FtpFeatures.EMPTY;
 		private int _port;
 
 		public FtpClient(string username,
@@ -70,6 +70,41 @@ namespace sharpLightFtp
 			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
 			this.SendTimeout = TimeSpan.FromMinutes(5);
 			this.SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http;
+
+			this._ftpFeatures = new Lazy<FtpFeatures>(() =>
+			{
+				{
+					var success = this._controlComplexSocket.Send("FEAT",
+					                                              this.Encoding,
+					                                              this.SendTimeout);
+					if (!success)
+					{
+						return FtpFeatures.Unknown;
+					}
+				}
+				{
+					var complexResult = this._controlComplexSocket.Receive(this.Encoding,
+					                                                       this.ReceiveTimeout);
+					var success = complexResult.Success;
+					if (!success)
+					{
+						return FtpFeatures.Unknown;
+					}
+
+					var messages = complexResult.Messages;
+					var ftpFeatures = FtpClientHelper.ParseFtpFeatures(messages);
+
+					return ftpFeatures;
+				}
+			});
+		}
+
+		public FtpFeatures FtpFeatures
+		{
+			get
+			{
+				return this._ftpFeatures.Value;
+			}
 		}
 
 		public Encoding Encoding { get; set; }
@@ -132,20 +167,13 @@ namespace sharpLightFtp
 					return Enumerable.Empty<FtpListItem>();
 				}
 			}
-			{
-				var success = this.BasicConnect();
-				if (!success)
-				{
-					return Enumerable.Empty<FtpListItem>();
-				}
-			}
 
 			FtpListType ftpListType;
-			if (this._features.HasFlag(FtpFeatures.MLSD))
+			if (this.FtpFeatures.HasFlag(FtpFeatures.MLSD))
 			{
 				ftpListType = FtpListType.MLSD;
 			}
-			else if (this._features.HasFlag(FtpFeatures.MLST))
+			else if (this.FtpFeatures.HasFlag(FtpFeatures.MLST))
 			{
 				ftpListType = FtpListType.MLST;
 			}
@@ -167,13 +195,6 @@ namespace sharpLightFtp
 		{
 			{
 				var success = this.EnsureConnection();
-				if (!success)
-				{
-					return Enumerable.Empty<string>();
-				}
-			}
-			{
-				var success = this.BasicConnect();
 				if (!success)
 				{
 					return Enumerable.Empty<string>();
@@ -203,7 +224,7 @@ namespace sharpLightFtp
 				                                    path);
 
 				var controlComplexSocket = this._controlComplexSocket;
-				if (this._features.HasFlag(FtpFeatures.PRET))
+				if (this.FtpFeatures.HasFlag(FtpFeatures.PRET))
 				{
 					// On servers that advertise PRET (DrFTPD), the PRET command must be executed before a passive connection is opened.
 					{
@@ -288,6 +309,7 @@ namespace sharpLightFtp
 				}
 			}
 
+			lock (this._lockControlComplexSocket)
 			{
 				ComplexResult complexResult;
 				var success = this.TryCreateDirectoryInternal(path,
@@ -301,35 +323,24 @@ namespace sharpLightFtp
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
+
 			{
-				var success = this.BasicConnect();
+				var success = this._controlComplexSocket.Send(string.Format("MKD {0}",
+				                                                            path),
+				                                              this.Encoding,
+				                                              this.SendTimeout);
 				if (!success)
 				{
-					complexResult = ComplexResult.FailedComplexResult;
+					complexResult = null;
 					return false;
 				}
 			}
-
-			lock (this._lockControlComplexSocket)
 			{
-				{
-					var success = this._controlComplexSocket.Send(string.Format("MKD {0}",
-					                                                            path),
-					                                              this.Encoding,
-					                                              this.SendTimeout);
-					if (!success)
-					{
-						complexResult = null;
-						return false;
-					}
-				}
-				{
-					complexResult = this._controlComplexSocket.Receive(this.Encoding,
-					                                                   this.ReceiveTimeout);
-					var success = complexResult.Success;
+				complexResult = this._controlComplexSocket.Receive(this.Encoding,
+				                                                   this.ReceiveTimeout);
+				var success = complexResult.Success;
 
-					return success;
-				}
+				return success;
 			}
 		}
 
@@ -342,14 +353,6 @@ namespace sharpLightFtp
 
 			{
 				var success = this.EnsureConnection();
-				if (!success)
-				{
-					return false;
-				}
-			}
-
-			{
-				var success = this.BasicConnect();
 				if (!success)
 				{
 					return false;
@@ -505,38 +508,6 @@ namespace sharpLightFtp
 
 			this._controlComplexSocket = controlComplexSocket;
 			return true;
-		}
-
-		private bool BasicConnect()
-		{
-			lock (this._lockControlComplexSocket)
-			{
-				return Task<bool>.Factory.StartNew(this.EnsureConnection)
-				                 .ContinueWith(connectTask =>
-				                 {
-					                 if (!connectTask.Result)
-					                 {
-						                 return false;
-					                 }
-
-					                 // then we need to get the features
-					                 if (this._features != FtpFeatures.EMPTY)
-					                 {
-						                 return true;
-					                 }
-
-					                 return Task<bool>.Factory.StartNew(() => ComplexSocketTasks.SendFeatureToComplexSocketTask(this._controlComplexSocket,
-					                                                                                                            this.Encoding,
-					                                                                                                            this.SendTimeout))
-					                                  .ContinueWith(sendFeatureCommandTask => ComplexSocketTasks.GetFeaturesTask(sendFeatureCommandTask,
-					                                                                                                             this._controlComplexSocket,
-					                                                                                                             this.Encoding,
-					                                                                                                             this.ReceiveTimeout,
-					                                                                                                             ref this._features))
-					                                  .Result;
-				                 })
-				                 .Result;
-			}
 		}
 
 		private ComplexSocket GetPassiveComplexSocket()

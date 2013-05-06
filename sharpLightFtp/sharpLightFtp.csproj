@@ -88,7 +88,6 @@
   <ItemGroup>
     <Compile Include="ComplexResult.cs" />
     <Compile Include="ComplexSocket.cs" />
-    <Compile Include="ComplexSocketTasks.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="EventArgs\BaseFtpCommandFailedEventArgs.cs" />
     <Compile Include="EventArgs\BaseFtpCommandWithSocketEventArgsFailedEventArgs.cs" />
@@ -100,6 +99,7 @@
     <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
     <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
     <Compile Include="FtpClient.cs" />
+    <Compile Include="FtpClientHelper.cs" />
     <Compile Include="FtpDirectory.cs" />
     <Compile Include="FtpFile.cs" />
     <Compile Include="FtpFileSystemObject.cs" />

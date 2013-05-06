@@ -15,7 +15,6 @@ namespace sharpLightFtp
 		/// <summary>Initializes an empty parser</summary>
 		private FtpListItem()
 		{
-			this.Type = FtpObjectType.Unknown;
 			this.Size = -1;
 			this.Mode = "0000";
 			this.Modify = DateTime.MinValue;
