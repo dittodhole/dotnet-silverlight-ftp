@@ -8,47 +8,6 @@ namespace sharpLightFtp
 {
 	internal static class ComplexSocketTasks
 	{
-		internal static bool ConnectToComplexSocketTask(ComplexSocket controlComplexSocket,
-		                                                TimeSpan connectTimeout)
-		{
-			return controlComplexSocket.Connect(connectTimeout);
-		}
-
-		internal static bool ReceiveOutputFromConnectTask(Task<bool> connectToSocketTask,
-		                                                  ComplexSocket controlComplexSocket,
-		                                                  Encoding encoding,
-		                                                  TimeSpan receiveTimeout)
-		{
-			if (!connectToSocketTask.Result)
-			{
-				return false;
-			}
-
-			var complexResult = controlComplexSocket.Receive(encoding,
-			                                                 receiveTimeout);
-			return complexResult.Success;
-		}
-
-		internal static bool AuthenticateTask(Task<bool> receiveOutputFromConnectTask,
-		                                      ComplexSocket controlComplexSocket,
-		                                      string username,
-		                                      string password,
-		                                      Encoding encoding,
-		                                      TimeSpan sendTimeout,
-		                                      TimeSpan receiveTimeout)
-		{
-			if (!receiveOutputFromConnectTask.Result)
-			{
-				return false;
-			}
-
-			return controlComplexSocket.Authenticate(username,
-			                                         password,
-			                                         encoding,
-			                                         sendTimeout,
-			                                         receiveTimeout);
-		}
-
 		internal static bool SendFeatureToComplexSocketTask(ComplexSocket controlComplexSocket,
 		                                                    Encoding encoding,
 		                                                    TimeSpan sendTimeout)

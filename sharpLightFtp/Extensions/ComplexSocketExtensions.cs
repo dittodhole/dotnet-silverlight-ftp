@@ -17,6 +17,7 @@ namespace sharpLightFtp.Extensions
 		{
 			Contract.Requires(complexSocket != null);
 			Contract.Requires(complexSocket.IsControlSocket);
+			Contract.Requires(!string.IsNullOrEmpty(username));
 			Contract.Requires(encoding != null);
 
 			{
@@ -79,8 +80,8 @@ namespace sharpLightFtp.Extensions
 		                          TimeSpan timeout)
 		{
 			Contract.Requires(complexSocket != null);
+			Contract.Requires(!string.IsNullOrEmpty(command));
 			Contract.Requires(encoding != null);
-			Contract.Requires(!string.IsNullOrWhiteSpace(command));
 
 			if (!command.EndsWith(Environment.NewLine))
 			{
@@ -89,11 +90,12 @@ namespace sharpLightFtp.Extensions
 			}
 
 			var buffer = encoding.GetBytes(command);
-			var memoryStream = new MemoryStream(buffer);
-			var success = complexSocket.Send(memoryStream,
-			                                 timeout);
-
-			return success;
+			using (var memoryStream = new MemoryStream(buffer))
+			{
+				var success = complexSocket.Send(memoryStream,
+				                                 timeout);
+				return success;
+			}
 		}
 	}
 }

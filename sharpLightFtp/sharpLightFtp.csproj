@@ -96,6 +96,7 @@
     <Compile Include="EventArgs\FtpCommandTimedOutEventArgs.cs" />
     <Compile Include="Extensions\ComplexSocketExtensions.cs" />
     <Compile Include="EventArgs\FtpCommandFailedEventArgs.cs" />
+    <Compile Include="Extensions\FtpClientExtensions.cs" />
     <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
     <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
     <Compile Include="FtpClient.cs" />

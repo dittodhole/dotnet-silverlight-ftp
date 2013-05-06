@@ -126,6 +126,13 @@ namespace sharpLightFtp
 		public IEnumerable<FtpListItem> GetListing(string path)
 		{
 			{
+				var success = this.EnsureConnection();
+				if (!success)
+				{
+					return Enumerable.Empty<FtpListItem>();
+				}
+			}
+			{
 				var success = this.BasicConnect();
 				if (!success)
 				{
@@ -158,6 +165,13 @@ namespace sharpLightFtp
 		public IEnumerable<string> GetRawListing(string path,
 		                                         FtpListType ftpListType)
 		{
+			{
+				var success = this.EnsureConnection();
+				if (!success)
+				{
+					return Enumerable.Empty<string>();
+				}
+			}
 			{
 				var success = this.BasicConnect();
 				if (!success)
@@ -266,11 +280,20 @@ namespace sharpLightFtp
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
-			ComplexResult complexResult;
-			var success = this.TryCreateDirectoryInternal(path,
-			                                              out complexResult);
+			{
+				var success = this.EnsureConnection();
+				if (!success)
+				{
+					return false;
+				}
+			}
 
-			return success;
+			{
+				ComplexResult complexResult;
+				var success = this.TryCreateDirectoryInternal(path,
+				                                              out complexResult);
+				return success;
+			}
 		}
 
 		private bool TryCreateDirectoryInternal(string path,
@@ -316,6 +339,14 @@ namespace sharpLightFtp
 			Contract.Requires(stream != null);
 			Contract.Requires(stream.CanRead);
 			Contract.Requires(ftpFile != null);
+
+			{
+				var success = this.EnsureConnection();
+				if (!success)
+				{
+					return false;
+				}
+			}
 
 			{
 				var success = this.BasicConnect();
@@ -436,46 +467,51 @@ namespace sharpLightFtp
 			}
 		}
 
+		private bool EnsureConnection()
+		{
+			var controlComplexSocket = this._controlComplexSocket ?? this.CreateControlComplexSocket();
+			if (controlComplexSocket.Connected)
+			{
+				return true;
+			}
+
+			{
+				var success = controlComplexSocket.Connect(this.ConnectTimeout);
+				if (!success)
+				{
+					return false;
+				}
+			}
+			{
+				var complexResult = controlComplexSocket.Receive(this.Encoding,
+				                                                 this.ReceiveTimeout);
+				var success = complexResult.Success;
+				if (!success)
+				{
+					return false;
+				}
+			}
+			{
+				var success = controlComplexSocket.Authenticate(this.Username,
+				                                                this.Password,
+				                                                this.Encoding,
+				                                                this.SendTimeout,
+				                                                this.ReceiveTimeout);
+				if (!success)
+				{
+					return false;
+				}
+			}
+
+			this._controlComplexSocket = controlComplexSocket;
+			return true;
+		}
+
 		private bool BasicConnect()
 		{
 			lock (this._lockControlComplexSocket)
 			{
-				return Task<bool>.Factory.StartNew(() =>
-				{
-					var complexSocket = this._controlComplexSocket;
-					if (complexSocket != null)
-					{
-						if (complexSocket.Connected)
-						{
-							return true;
-						}
-					}
-
-					// first we need to initialize the control complexSocket
-					var controlComplexSocket = this.CreateControlComplexSocket();
-					var result = Task<bool>.Factory.StartNew(() => ComplexSocketTasks.ConnectToComplexSocketTask(controlComplexSocket,
-					                                                                                             this.ConnectTimeout))
-					                       .ContinueWith(connectToSocketTask => ComplexSocketTasks.ReceiveOutputFromConnectTask(connectToSocketTask,
-					                                                                                                            controlComplexSocket,
-					                                                                                                            this.Encoding,
-					                                                                                                            this.ReceiveTimeout))
-					                       .ContinueWith(receiveOutputFromConnectTask => ComplexSocketTasks.AuthenticateTask(receiveOutputFromConnectTask,
-					                                                                                                         controlComplexSocket,
-					                                                                                                         this.Username,
-					                                                                                                         this.Password,
-					                                                                                                         this.Encoding,
-					                                                                                                         this.SendTimeout,
-					                                                                                                         this.ReceiveTimeout))
-					                       .Result;
-
-					if (result)
-					{
-						this._controlComplexSocket = controlComplexSocket;
-						return true;
-					}
-
-					return false;
-				})
+				return Task<bool>.Factory.StartNew(this.EnsureConnection)
 				                 .ContinueWith(connectTask =>
 				                 {
 					                 if (!connectTask.Result)
@@ -579,33 +615,6 @@ namespace sharpLightFtp
 					return transferComplexSocket;
 				}
 			}
-		}
-
-		private ComplexSocket CreateControlComplexSocket()
-		{
-			var endPoint = new DnsEndPoint(this.Server,
-			                               this.Port);
-
-			var complexSocket = new ComplexSocket(this,
-			                                      endPoint,
-			                                      true);
-
-			return complexSocket;
-		}
-
-		private ComplexSocket CreateTransferComplexSocket(IPAddress ipAddress,
-		                                                  int port)
-		{
-			Contract.Requires(ipAddress != null);
-
-			var endPoint = new IPEndPoint(ipAddress,
-			                              port);
-
-			var complexSocket = new ComplexSocket(this,
-			                                      endPoint,
-			                                      false);
-
-			return complexSocket;
 		}
 	}
 }
