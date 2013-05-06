@@ -73,18 +73,19 @@ namespace sharpLightFtp
 
 			this._ftpFeatures = new Lazy<FtpFeatures>(() =>
 			{
+				var controlComplexSocket = this._controlComplexSocket;
 				{
-					var success = this._controlComplexSocket.Send("FEAT",
-					                                              this.Encoding,
-					                                              this.SendTimeout);
+					var success = controlComplexSocket.Send("FEAT",
+					                                        this.Encoding,
+					                                        this.SendTimeout);
 					if (!success)
 					{
 						return FtpFeatures.Unknown;
 					}
 				}
 				{
-					var complexResult = this._controlComplexSocket.Receive(this.Encoding,
-					                                                       this.ReceiveTimeout);
+					var complexResult = controlComplexSocket.Receive(this.Encoding,
+					                                                 this.ReceiveTimeout);
 					var success = complexResult.Success;
 					if (!success)
 					{
@@ -131,8 +132,6 @@ namespace sharpLightFtp
 			}
 		}
 
-		#region IDisposable Members
-
 		public void Dispose()
 		{
 			{
@@ -143,8 +142,6 @@ namespace sharpLightFtp
 				}
 			}
 		}
-
-		#endregion
 
 		public event EventHandler<BaseFtpCommandFailedEventArgs> FtpCommandFailed;
 
@@ -300,12 +297,12 @@ namespace sharpLightFtp
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
-
+			var controlComplexSocket = this._controlComplexSocket;
 			{
-				var success = this._controlComplexSocket.Send(string.Format("MKD {0}",
-				                                                            path),
-				                                              this.Encoding,
-				                                              this.SendTimeout);
+				var success = controlComplexSocket.Send(string.Format("MKD {0}",
+				                                                      path),
+				                                        this.Encoding,
+				                                        this.SendTimeout);
 				if (!success)
 				{
 					complexResult = null;
@@ -313,8 +310,8 @@ namespace sharpLightFtp
 				}
 			}
 			{
-				complexResult = this._controlComplexSocket.Receive(this.Encoding,
-				                                                   this.ReceiveTimeout);
+				complexResult = controlComplexSocket.Receive(this.Encoding,
+				                                             this.ReceiveTimeout);
 				var success = complexResult.Success;
 
 				return success;
@@ -489,18 +486,19 @@ namespace sharpLightFtp
 
 		private ComplexSocket GetPassiveComplexSocket()
 		{
+			var controlComplexSocket = this._controlComplexSocket;
 			{
-				var success = this._controlComplexSocket.Send("PASV",
-				                                              this.Encoding,
-				                                              this.SendTimeout);
+				var success = controlComplexSocket.Send("PASV",
+				                                        this.Encoding,
+				                                        this.SendTimeout);
 				if (!success)
 				{
 					return null;
 				}
 			}
 			{
-				var complexResult = this._controlComplexSocket.Receive(this.Encoding,
-				                                                       this.ReceiveTimeout);
+				var complexResult = controlComplexSocket.Receive(this.Encoding,
+				                                                 this.ReceiveTimeout);
 				var success = complexResult.Success;
 				if (!success)
 				{

@@ -5,11 +5,6 @@ namespace sharpLightFtp
 {
 	public sealed class ComplexResult
 	{
-		internal static readonly ComplexResult FailedComplexResult = new ComplexResult(FtpResponseType.None,
-		                                                                               0,
-		                                                                               null,
-		                                                                               Enumerable.Empty<string>());
-
 		private readonly FtpResponseType _ftpResponseType;
 		private readonly List<string> _messages = new List<string>();
 		private readonly int _responseCode;
