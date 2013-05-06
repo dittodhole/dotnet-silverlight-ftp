@@ -257,7 +257,7 @@ namespace sharpLightFtp
 
 							var complexResult = transferComplexSocket.Receive(this.Encoding,
 							                                                  this.ReceiveTimeout);
-							// TODO check if there's a need to check against complexResult.Success or anything alike!
+							// TODO check if there's a need to check against FtpReply.Success or anything alike!
 							rawListing = complexResult.Messages;
 						}
 					}
@@ -284,16 +284,16 @@ namespace sharpLightFtp
 					}
 				}
 				{
-					ComplexResult complexResult;
+					FtpReply ftpReply;
 					var success = this.TryCreateDirectoryInternal(path,
-					                                              out complexResult);
+					                                              out ftpReply);
 					return success;
 				}
 			}
 		}
 
 		private bool TryCreateDirectoryInternal(string path,
-		                                        out ComplexResult complexResult)
+		                                        out FtpReply ftpReply)
 		{
 			Contract.Requires(!string.IsNullOrWhiteSpace(path));
 
@@ -305,14 +305,14 @@ namespace sharpLightFtp
 				                                        this.SendTimeout);
 				if (!success)
 				{
-					complexResult = null;
+					ftpReply = null;
 					return false;
 				}
 			}
 			{
-				complexResult = controlComplexSocket.Receive(this.Encoding,
+				ftpReply = controlComplexSocket.Receive(this.Encoding,
 				                                             this.ReceiveTimeout);
-				var success = complexResult.Success;
+				var success = ftpReply.Success;
 
 				return success;
 			}
@@ -359,7 +359,7 @@ namespace sharpLightFtp
 						switch (ftpResponseType)
 						{
 							case FtpResponseType.PermanentNegativeCompletion:
-								// TODO some parsing of the actual ComplexResult.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
+								// TODO some parsing of the actual FtpReply.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
 								var success = this.TryCreateDirectoryInternal(name,
 								                                              out complexResult);
 								if (!success)

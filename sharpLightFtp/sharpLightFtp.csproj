@@ -86,7 +86,7 @@
     <Reference Include="System.Windows.Browser" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ComplexResult.cs" />
+    <Compile Include="FtpReply.cs" />
     <Compile Include="ComplexSocket.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="EventArgs\BaseFtpCommandFailedEventArgs.cs" />

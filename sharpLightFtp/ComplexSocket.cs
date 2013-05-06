@@ -217,7 +217,7 @@ namespace sharpLightFtp
 			return true;
 		}
 
-		internal ComplexResult Receive(Encoding encoding,
+		internal FtpReply Receive(Encoding encoding,
 		                               TimeSpan timeout)
 		{
 			Contract.Requires(encoding != null);
@@ -280,7 +280,7 @@ namespace sharpLightFtp
 					}
 				}
 
-				var complexResult = new ComplexResult(ftpResponseType,
+				var complexResult = new FtpReply(ftpResponseType,
 				                                      responseCode,
 				                                      responseMessage,
 				                                      messages);
