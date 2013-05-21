@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics.Contracts;
 using System.Threading;
 
 namespace sharpLightFtp
@@ -7,15 +6,10 @@ namespace sharpLightFtp
 	public sealed class SocketAsyncEventArgsUserToken
 	{
 		private readonly AutoResetEvent _autoResetEvent = new AutoResetEvent(false);
-		private readonly ComplexSocket _complexSocket;
 		private readonly TimeSpan _timeout;
 
-		internal SocketAsyncEventArgsUserToken(ComplexSocket complexSocket,
-		                                       TimeSpan timeout)
+		internal SocketAsyncEventArgsUserToken(TimeSpan timeout)
 		{
-			Contract.Requires(complexSocket != null);
-
-			this._complexSocket = complexSocket;
 			this._timeout = timeout;
 		}
 
@@ -24,14 +18,6 @@ namespace sharpLightFtp
 			get
 			{
 				return this._autoResetEvent;
-			}
-		}
-
-		public ComplexSocket ComplexSocket
-		{
-			get
-			{
-				return this._complexSocket;
 			}
 		}
 

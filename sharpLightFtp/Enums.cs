@@ -62,4 +62,12 @@ namespace sharpLightFtp
 		Link,
 		Device
 	}
+
+	internal enum InternalCommandResult
+	{
+		Unknown,
+		NoReceivedWithinTime,
+		ExceptionOccured,
+		Success
+	}
 }

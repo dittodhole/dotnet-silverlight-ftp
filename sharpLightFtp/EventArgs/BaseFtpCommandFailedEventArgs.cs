@@ -7,9 +7,7 @@ namespace sharpLightFtp.EventArgs
 	{
 		public abstract bool TimedOut { get; }
 		public abstract SocketError SocketError { get; }
-		public abstract FtpClient FtpClient { get; }
 		public abstract TimeSpan Timeout { get; }
-		public abstract ComplexSocket ComplexSocket { get; }
 		public abstract Exception Exception { get; }
 		public abstract SocketAsyncOperation LastOperation { get; }
 	}

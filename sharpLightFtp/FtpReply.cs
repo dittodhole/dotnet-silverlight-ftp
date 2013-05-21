@@ -1,9 +1,15 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace sharpLightFtp
 {
 	public sealed class FtpReply
 	{
+		internal static readonly FtpReply FailedFtpReply = new FtpReply(FtpResponseType.None,
+		                                                                0,
+		                                                                null,
+		                                                                Enumerable.Empty<string>());
+
 		private readonly FtpResponseType _ftpResponseType;
 		private readonly List<string> _messages = new List<string>();
 		private readonly int _responseCode;

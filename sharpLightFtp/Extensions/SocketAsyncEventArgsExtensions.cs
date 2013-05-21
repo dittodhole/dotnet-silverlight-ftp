@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.Contracts;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 
 namespace sharpLightFtp.Extensions
@@ -9,8 +8,6 @@ namespace sharpLightFtp.Extensions
 		public static string GetData(this SocketAsyncEventArgs socketAsyncEventArgs,
 		                             Encoding encoding)
 		{
-			Contract.Requires(encoding != null);
-
 			var buffer = socketAsyncEventArgs.Buffer;
 			var offset = socketAsyncEventArgs.Offset;
 			var bytesTransferred = socketAsyncEventArgs.BytesTransferred;

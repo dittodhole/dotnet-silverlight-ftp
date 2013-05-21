@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 
 namespace sharpLightFtp.Extensions
 {
@@ -7,8 +6,6 @@ namespace sharpLightFtp.Extensions
 	{
 		internal static IEnumerable<FtpDirectory> GetHierarchy(this FtpFileSystemObject ftpFileSystemObject)
 		{
-			Contract.Requires(ftpFileSystemObject != null);
-
 			var current = ftpFileSystemObject.ParentDirectory;
 			if (current == null)
 			{

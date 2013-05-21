@@ -1,6 +1,4 @@
-﻿using System;
-using System.Diagnostics.Contracts;
-using System.Net;
+﻿using System.Net;
 
 namespace sharpLightFtp.Extensions
 {
@@ -8,9 +6,6 @@ namespace sharpLightFtp.Extensions
 	{
 		internal static ComplexSocket CreateControlComplexSocket(this FtpClient ftpClient)
 		{
-			Contract.Requires(ftpClient != null);
-			Contract.Requires(!String.IsNullOrEmpty(ftpClient.Server));
-
 			// TODO add check for ftpClient.Port 0 - 0xffff
 
 			var endPoint = new DnsEndPoint(ftpClient.Server,
@@ -27,9 +22,6 @@ namespace sharpLightFtp.Extensions
 		                                                          IPAddress ipAddress,
 		                                                          int port)
 		{
-			Contract.Requires(ftpClient != null);
-			Contract.Requires(ipAddress != null);
-
 			// TODO add check for ftpClient.Port 0 - 0xffff
 
 			var endPoint = new IPEndPoint(ipAddress,

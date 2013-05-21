@@ -4,8 +4,8 @@ namespace sharpLightFtp.EventArgs
 {
 	public sealed class FtpCommandTimedOutEventArgs : BaseFtpCommandWithSocketEventArgsFailedEventArgs
 	{
-		internal FtpCommandTimedOutEventArgs(SocketAsyncEventArgs socketAsyncEventArgs)
-			: base(socketAsyncEventArgs) {}
+		internal FtpCommandTimedOutEventArgs(SocketAsyncEventArgs socketAsyncEventArgsUserToken)
+			: base(socketAsyncEventArgsUserToken) {}
 
 		public override bool TimedOut
 		{

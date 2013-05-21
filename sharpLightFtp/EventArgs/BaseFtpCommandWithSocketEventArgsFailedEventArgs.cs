@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Diagnostics.Contracts;
 using System.Net.Sockets;
 
 namespace sharpLightFtp.EventArgs
 {
 	public abstract class BaseFtpCommandWithSocketEventArgsFailedEventArgs : BaseFtpCommandFailedEventArgs
 	{
-		private readonly ComplexSocket _complexSocket;
 		private readonly Exception _exception;
 		private readonly SocketAsyncOperation _lastOperation;
 		private readonly SocketError _socketError;
@@ -14,14 +12,9 @@ namespace sharpLightFtp.EventArgs
 
 		protected BaseFtpCommandWithSocketEventArgsFailedEventArgs(SocketAsyncEventArgs socketAsyncEventArgs)
 		{
-			Contract.Requires(socketAsyncEventArgs != null);
-
-			// TODO clear things out: is it a good idea to keep socketAsyncEventArgs in here, because we are firing off the using eventHandler asynchronously
-
 			var userToken = socketAsyncEventArgs.UserToken;
 			var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
 
-			this._complexSocket = socketAsyncEventArgsUserToken.ComplexSocket;
 			this._timeout = socketAsyncEventArgsUserToken.Timeout;
 			this._exception = socketAsyncEventArgs.ConnectByNameError;
 			this._socketError = socketAsyncEventArgs.SocketError;
@@ -36,27 +29,11 @@ namespace sharpLightFtp.EventArgs
 			}
 		}
 
-		public override FtpClient FtpClient
-		{
-			get
-			{
-				return this.ComplexSocket.FtpClient;
-			}
-		}
-
 		public override TimeSpan Timeout
 		{
 			get
 			{
 				return this._timeout;
-			}
-		}
-
-		public override ComplexSocket ComplexSocket
-		{
-			get
-			{
-				return this._complexSocket;
 			}
 		}
 

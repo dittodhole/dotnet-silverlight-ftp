@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 
 namespace sharpLightFtp
 {
@@ -50,6 +51,39 @@ namespace sharpLightFtp
 			}
 
 			return ftpFeatures;
+		}
+
+		public static IPAddress ParseIPAddress(IEnumerable<string> octets )
+		{
+			var address = (from octet in octets
+			                 let b = byte.Parse(octet)
+			                 select b);
+			var ipAddress = new IPAddress(address.ToArray());
+			
+			return ipAddress;
+		}
+
+		public static int ParsePassivePort(string p1,
+		                                   string p2)
+		{
+			int part1;
+			if (!int.TryParse(p1,
+			                  out part1))
+			{
+				return 0;
+			}
+
+			int part2;
+			if (!int.TryParse(p2,
+			                  out part2))
+			{
+				return 0;
+			}
+
+			// part1 * 256 + part2
+			var port = (part1 << 8) + part2;
+
+			return port;
 		}
 	}
 }
