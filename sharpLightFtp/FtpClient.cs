@@ -95,7 +95,6 @@ namespace sharpLightFtp
 		public string Username { get; set; }
 		public string Password { get; set; }
 		public SocketClientAccessPolicyProtocol SocketClientAccessPolicyProtocol { get; set; }
-
 		public int Port { get; set; }
 
 		public void Dispose()
@@ -178,17 +177,9 @@ namespace sharpLightFtp
 					using (transferComplexSocket)
 					{
 						{
-							// send LIST/MLSD/MLST-command via control socket
-							var ftpReply = this.Execute(concreteCommand);
+							var ftpReply = this.Execute(() => transferComplexSocket.Connect(this.ConnectTimeout),
+							                            concreteCommand);
 							if (!ftpReply.Success)
-							{
-								return Enumerable.Empty<FtpListItem>();
-							}
-						}
-						{
-							// receive listing via transfer socket
-							var connected = transferComplexSocket.Connect(this.ConnectTimeout);
-							if (!connected)
 							{
 								return Enumerable.Empty<FtpListItem>();
 							}
@@ -209,6 +200,8 @@ namespace sharpLightFtp
 			                                         ftpListType);
 
 			return ftpListItems;
+
+			// TODO final reading from control socket!
 		}
 
 		public bool CreateDirectory(string path)
@@ -295,37 +288,12 @@ namespace sharpLightFtp
 
 				using (transferComplexSocket)
 				{
+					var ftpReply = this.Execute(() => transferComplexSocket.Connect(this.ConnectTimeout),
+					                            "STOR {0}",
+					                            ftpFile.Name);
+					if (!ftpReply.Success)
 					{
-						// sending STOR-command via control socket
-						var fileName = ftpFile.Name;
-						var success = controlComplexSocket.Send(string.Format("STOR {0}",
-						                                                      fileName),
-						                                        this.Encoding,
-						                                        this.SendTimeout);
-						if (!success)
-						{
-							return false;
-						}
-					}
-					{
-						// connect to transfer socket
-						var connected = transferComplexSocket.Connect(this.ConnectTimeout);
-						if (!connected)
-						{
-							return false;
-						}
-					}
-
-					using (var socketAsyncEventArgs = controlComplexSocket.GetSocketAsyncEventArgs(this.ReceiveTimeout))
-					{
-						// receiving STOR-response via control socket (should be 150/125)
-						var complexResult = controlComplexSocket.Socket.Receive(socketAsyncEventArgs,
-						                                                        this.Encoding);
-						var success = complexResult.Success;
-						if (!success)
-						{
-							return false;
-						}
+						return false;
 					}
 
 					{
@@ -340,6 +308,7 @@ namespace sharpLightFtp
 				}
 
 				{
+					// TODO fix endless recursion: if there comes a fatal, break!
 					FtpResponseType ftpResponseType;
 					do
 					{
@@ -460,17 +429,38 @@ namespace sharpLightFtp
 		public FtpReply Execute(string command,
 		                        params object[] args)
 		{
+			var ftpReply = this.Execute(null,
+			                            command,
+			                            args);
+
+			return ftpReply;
+		}
+
+		public FtpReply Execute(Func<bool> interimPredicate,
+		                        string command,
+		                        params object[] args)
+		{
 			command = string.Format(command,
 			                        args);
 
 			var controlComplexSocket = this._controlComplexSocket;
 
-			var success = controlComplexSocket.Send(command,
-			                                        this.Encoding,
-			                                        this.SendTimeout);
-			if (!success)
 			{
-				return FtpReply.FailedFtpReply;
+				var success = controlComplexSocket.Send(command,
+				                                        this.Encoding,
+				                                        this.SendTimeout);
+				if (!success)
+				{
+					return FtpReply.FailedFtpReply;
+				}
+			}
+			if (interimPredicate != null)
+			{
+				var success = interimPredicate.Invoke();
+				if (!success)
+				{
+					return FtpReply.FailedFtpReply;
+				}
 			}
 			using (var socketAsyncEventArgs = controlComplexSocket.GetSocketAsyncEventArgs(this.ReceiveTimeout))
 			{
