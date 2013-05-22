@@ -386,7 +386,7 @@ namespace sharpLightFtp
 			}
 
 			var ipAddress = FtpClientHelper.ParseIPAddress(from index in Enumerable.Range(1,
-			                                                                              3)
+			                                                                              4)
 			                                               let octet = matches.Groups[index].Value
 			                                               select octet);
 			var p1 = matches.Groups[5].Value;
