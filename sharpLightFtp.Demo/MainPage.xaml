@@ -1,73 +1,70 @@
-﻿<UserControl
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:toolkit="http://schemas.microsoft.com/winfx/2006/xaml/presentation/toolkit"
-    x:Class="sharpLightFtp.Demo.MainPage"
-    mc:Ignorable="d"
-    d:DesignHeight="300"
-    d:DesignWidth="400">
-    <StackPanel>
-        <Grid x:Name="LayoutRoot"
-              Background="White"
-              Height="150"
-              VerticalAlignment="Top">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="1*" />
-                <RowDefinition Height="1*" />
-                <RowDefinition Height="1*" />
-                <RowDefinition Height="1*" />
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1*"/>
-                <ColumnDefinition Width="2*"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Row="0"
-                       Grid.Column="0"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Text="Server" />
-            <TextBox x:Name="tbServer"
-                     Grid.Row="0"
-                     Grid.Column="1"
-                     VerticalAlignment="Center"
-                     Text="ftp.myserver.com" />
-            <TextBlock Grid.Row="1"
-                       Grid.Column="0"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Text="Port" />
-            <TextBox x:Name="tbPort"
-                     Grid.Row="1"
-                     Grid.Column="1"
-                     VerticalAlignment="Center"
-                     Text="21" />
-            <TextBlock Grid.Row="2"
-                       Grid.Column="0"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Text="Username" />
-            <TextBox x:Name="tbUsername"
-                     Grid.Row="2"
-                     Grid.Column="1"
-                     VerticalAlignment="Center"
-                     Text="username" />
-            <TextBlock Grid.Row="3"
-                       Grid.Column="0"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Text="Password" />
-            <TextBox x:Name="tbPassword"
-                     Grid.Row="3"
-                     Grid.Column="1"
-                     VerticalAlignment="Center"
-                     Text="password" />
-        </Grid>
-        <Button Width="100"
-                Height="25"
-                Margin="10"
-                Content="Do Stuff"
-                Click="DoStuff" />
-    </StackPanel>
+﻿<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             x:Class="sharpLightFtp.Demo.MainPage"
+             mc:Ignorable="d"
+             d:DesignHeight="300"
+             d:DesignWidth="400">
+	<StackPanel>
+		<Grid x:Name="LayoutRoot"
+		      Background="White"
+		      Height="150"
+		      VerticalAlignment="Top">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+				<RowDefinition Height="1*"/>
+			</Grid.RowDefinitions>
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="1*"/>
+				<ColumnDefinition Width="2*"/>
+			</Grid.ColumnDefinitions>
+			<TextBlock Grid.Row="0"
+			           Grid.Column="0"
+			           HorizontalAlignment="Right"
+			           VerticalAlignment="Center"
+			           Text="Server"/>
+			<TextBox x:Name="tbServer"
+			         Grid.Row="0"
+			         Grid.Column="1"
+			         VerticalAlignment="Center"
+			         Text="ftp.mozilla.org"/>
+			<TextBlock Grid.Row="1"
+			           Grid.Column="0"
+			           HorizontalAlignment="Right"
+			           VerticalAlignment="Center"
+			           Text="Port"/>
+			<TextBox x:Name="tbPort"
+			         Grid.Row="1"
+			         Grid.Column="1"
+			         VerticalAlignment="Center"
+			         Text="21"/>
+			<TextBlock Grid.Row="2"
+			           Grid.Column="0"
+			           HorizontalAlignment="Right"
+			           VerticalAlignment="Center"
+			           Text="Username"/>
+			<TextBox x:Name="tbUsername"
+			         Grid.Row="2"
+			         Grid.Column="1"
+			         VerticalAlignment="Center"
+			         Text="anonymous"/>
+			<TextBlock Grid.Row="3"
+			           Grid.Column="0"
+			           HorizontalAlignment="Right"
+			           VerticalAlignment="Center"
+			           Text="Password"/>
+			<TextBox x:Name="tbPassword"
+			         Grid.Row="3"
+			         Grid.Column="1"
+			         VerticalAlignment="Center"/>
+		</Grid>
+		<Button Width="100"
+		        Height="25"
+		        Margin="10"
+		        Content="Do Stuff"
+		        Click="DoStuff"/>
+	</StackPanel>
 </UserControl>

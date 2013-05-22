@@ -18,8 +18,8 @@ namespace sharpLightFtp.Demo
 		private void DoStuff(object sender, RoutedEventArgs e)
 		{
 			//this.ConnectAsync();
-			//this.GetListingAsync();
-			this.UploadAsync();
+			this.GetListingAsync();
+			//this.UploadAsync();
 		}
 
 		private void GetListingAsync()
