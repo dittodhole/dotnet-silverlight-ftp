@@ -32,17 +32,17 @@ namespace sharpLightFtp
 		Unknown = 0,
 		MLST = 1 << 0,
 		MLSD = 1 << 1,
-		SIZE = 1 << 2,
-		MDTM = 1 << 3,
-		REST = 1 << 4,
-		EPSV = 1 << 5,
-		EPRT = 1 << 6,
-		MDTMDIR = 1 << 8,
-		UTF8 = 1 << 9,
-		MFMT = 1 << 11,
-		MFCT = 1 << 12,
-		MFF = 1 << 13,
-		STAT = 1 << 14
+		//SIZE = 1 << 2,
+		//MDTM = 1 << 3,
+		//REST = 1 << 4,
+		//EPSV = 1 << 5,
+		//EPRT = 1 << 6,
+		//MDTMDIR = 1 << 8,
+		//UTF8 = 1 << 9,
+		//MFMT = 1 << 11,
+		//MFCT = 1 << 12,
+		//MFF = 1 << 13,
+		//STAT = 1 << 14
 	}
 
 	public enum FtpListType
