@@ -121,6 +121,8 @@ namespace sharpLightFtp
 
 		private void ParseMachineListing(string listing)
 		{
+			// more information: http://tools.ietf.org/html/rfc3659#page-23
+
 			var matches = new List<string>();
 			var regularExpression = new Regex(@"(.+?)=(.*?);|  ?(.+?)$");
 			Match match;

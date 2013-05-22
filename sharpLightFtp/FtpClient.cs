@@ -179,7 +179,6 @@ namespace sharpLightFtp
 						{
 							var ftpReply = transferComplexSocket.Socket.Receive(socketAsyncEventArgs,
 							                                                    this.Encoding);
-							// TODO check if there's a need to check against FtpReply.Success or anything alike!
 							rawListing = ftpReply.Messages;
 						}
 					}
@@ -200,8 +199,6 @@ namespace sharpLightFtp
 			                                         ftpListType);
 
 			return ftpListItems;
-
-			// TODO final reading from control socket!
 		}
 
 		public bool CreateDirectory(string path)
