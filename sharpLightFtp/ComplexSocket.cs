@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
 
@@ -145,6 +146,22 @@ namespace sharpLightFtp
 			                                                            timeout);
 
 			return socketAsyncEventArgs;
+		}
+
+		internal FtpReply GetFinalFtpReply(Encoding encoding,
+		                                   TimeSpan timeout)
+		{
+			FtpReply ftpReply;
+			do
+			{
+				using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
+				{
+					ftpReply = this.Socket.Receive(socketAsyncEventArgs,
+					                               encoding);
+				}
+			} while (ftpReply.FtpResponseType == FtpResponseType.None);
+
+			return ftpReply;
 		}
 	}
 }

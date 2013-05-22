@@ -193,6 +193,16 @@ namespace sharpLightFtp
 							rawListing = ftpReply.Messages;
 						}
 					}
+
+					{
+						var ftpReply = this._controlComplexSocket.GetFinalFtpReply(this.Encoding,
+						                                                           this.ReceiveTimeout);
+						var success = ftpReply.Success;
+						if (!success)
+						{
+							return Enumerable.Empty<FtpListItem>();
+						}
+					}
 				}
 			}
 
@@ -248,35 +258,11 @@ namespace sharpLightFtp
 
 				var controlComplexSocket = this._controlComplexSocket;
 				{
-					var hierarchy = ftpFile.GetHierarchy()
-					                       .Reverse();
-
-					foreach (var element in hierarchy)
+					var success = this.GotoDirectory(ftpFile,
+					                                 createDirectoryIfNotExists);
+					if (!success)
 					{
-						var name = element.Name;
-						var ftpReply = this.Execute("CWD {0}",
-						                            name);
-						if (!ftpReply.Success)
-						{
-							return false;
-						}
-
-						switch (ftpReply.FtpResponseType)
-						{
-							case FtpResponseType.PermanentNegativeCompletion:
-								// TODO some parsing of the actual FtpReply.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
-								var success = createDirectoryIfNotExists && this.TryCreateDirectoryInternal(name,
-								                                                                            out ftpReply);
-								if (!success)
-								{
-									return false;
-								}
-								goto case FtpResponseType.PositiveCompletion;
-							case FtpResponseType.PositiveCompletion:
-								continue;
-							default:
-								return false;
-						}
+						return false;
 					}
 				}
 
@@ -308,25 +294,11 @@ namespace sharpLightFtp
 				}
 
 				{
-					// TODO fix endless recursion: if there comes a fatal, break!
-					FtpResponseType ftpResponseType;
-					do
-					{
-						using (var socketAsyncEventArgs = controlComplexSocket.GetSocketAsyncEventArgs(this.ReceiveTimeout))
-						{
-							var complexResult = controlComplexSocket.Socket.Receive(socketAsyncEventArgs,
-							                                                        this.Encoding);
-							var success = complexResult.Success;
-							if (!success)
-							{
-								return false;
-							}
+					var ftpReply = controlComplexSocket.GetFinalFtpReply(this.Encoding,
+					                                                     this.ReceiveTimeout);
+					var success = ftpReply.Success;
 
-							ftpResponseType = complexResult.FtpResponseType;
-						}
-					} while (ftpResponseType != FtpResponseType.PositiveCompletion);
-
-					return true;
+					return success;
 				}
 			}
 		}
@@ -468,6 +440,42 @@ namespace sharpLightFtp
 				                                                   this.Encoding);
 				return ftpReply;
 			}
+		}
+
+		private bool GotoDirectory(FtpFile ftpFile,
+		                           bool createDirectoryIfNotExists)
+		{
+			var hierarchy = ftpFile.GetHierarchy()
+			                       .Reverse();
+
+			foreach (var element in hierarchy)
+			{
+				var name = element.Name;
+				var ftpReply = this.Execute("CWD {0}",
+				                            name);
+				if (!ftpReply.Success)
+				{
+					return false;
+				}
+
+				switch (ftpReply.FtpResponseType)
+				{
+					case FtpResponseType.PermanentNegativeCompletion:
+						// TODO some parsing of the actual FtpReply.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
+						var success = createDirectoryIfNotExists && this.TryCreateDirectoryInternal(name,
+						                                                                            out ftpReply);
+						if (!success)
+						{
+							return false;
+						}
+						goto case FtpResponseType.PositiveCompletion;
+					case FtpResponseType.PositiveCompletion:
+						continue;
+					default:
+						return false;
+				}
+			}
+			return true;
 		}
 	}
 }
