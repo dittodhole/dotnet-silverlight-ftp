@@ -1,0 +1,5 @@
+<OutOfBrowserSettings EnableGPUAcceleration="False" ShowInstallMenuItem="False">
+  <OutOfBrowserSettings.SecuritySettings>
+    <SecuritySettings ElevatedPermissions="Required" />
+  </OutOfBrowserSettings.SecuritySettings>
+</OutOfBrowserSettings>

@@ -11,3 +11,7 @@ You need to follow this (http://www.pitorque.de/MisterGoodcat/post/Silverlight-5
 Licence
 =============
 sharpLightFtp is licenced under WTFPL (http://www.wtfpl.net/), but it would be nice if you link my project-site and inform me about any issues/bugfixes/... found/made, so that I can enhance my project.
+
+Unit Tests
+=============
+In order to run unit tests you'll need to install AgUnit (https://agunit.codeplex.com/) and Silverlight 5 Toolkit (https://silverlight.codeplex.com/releases/view/78435)
