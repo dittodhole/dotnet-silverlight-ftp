@@ -157,16 +157,6 @@ namespace sharpLightFtp
 				                                    command,
 				                                    path);
 
-				if (this.FtpFeatures.HasFlag(FtpFeatures.PRET))
-				{
-					// On servers that advertise PRET (DrFTPD), the PRET command must be executed before a passive connection is opened.
-					var ftpReply = this.Execute("PRET {0}",
-					                            concreteCommand);
-					if (!ftpReply.Success)
-					{
-						return Enumerable.Empty<FtpListItem>();
-					}
-				}
 				{
 					var transferComplexSocket = this.GetPassiveComplexSocket();
 					if (transferComplexSocket == null)

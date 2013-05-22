@@ -32,7 +32,6 @@ namespace sharpLightFtp.Test
 			Assert.IsFalse(ftpFeatures.HasFlag(FtpFeatures.EPRT));
 			Assert.IsFalse(ftpFeatures.HasFlag(FtpFeatures.MDTMDIR));
 			Assert.IsTrue(ftpFeatures.HasFlag(FtpFeatures.UTF8));
-			Assert.IsFalse(ftpFeatures.HasFlag(FtpFeatures.PRET));
 			Assert.IsTrue(ftpFeatures.HasFlag(FtpFeatures.MFMT));
 			Assert.IsFalse(ftpFeatures.HasFlag(FtpFeatures.MFCT));
 			Assert.IsTrue(ftpFeatures.HasFlag(FtpFeatures.MFF));
