@@ -14,11 +14,24 @@
     <TargetFrameworkIdentifier>Silverlight</TargetFrameworkIdentifier>
     <TargetFrameworkVersion>v5.0</TargetFrameworkVersion>
     <SilverlightVersion>$(TargetFrameworkVersion)</SilverlightVersion>
-    <SilverlightApplication>false</SilverlightApplication>
+    <SilverlightApplication>true</SilverlightApplication>
+    <SupportedCultures>
+    </SupportedCultures>
+    <XapOutputs>true</XapOutputs>
+    <GenerateSilverlightManifest>true</GenerateSilverlightManifest>
+    <XapFilename>sharpLightFtp.Test.xap</XapFilename>
+    <SilverlightManifestTemplate>Properties\AppManifest.xml</SilverlightManifestTemplate>
+    <SilverlightAppEntry>
+    </SilverlightAppEntry>
+    <TestPageFileName>sharpLightFtp.Test.TestPage.html</TestPageFileName>
+    <CreateTestPage>true</CreateTestPage>
     <ValidateXaml>true</ValidateXaml>
     <EnableOutOfBrowser>false</EnableOutOfBrowser>
     <OutOfBrowserSettingsFile>Properties\OutOfBrowserSettings.xml</OutOfBrowserSettingsFile>
+    <UsePlatformExtensions>false</UsePlatformExtensions>
     <ThrowErrorsInValidation>true</ThrowErrorsInValidation>
+    <LinkedServerProject>
+    </LinkedServerProject>
     <InBrowserSettingsFile>Properties\InBrowserSettings.xml</InBrowserSettingsFile>
     <RequireInBrowserElevation>true</RequireInBrowserElevation>
   </PropertyGroup>
@@ -76,6 +89,13 @@
       <Project>{aeb3da47-5a6c-438c-b863-d9754f62afbf}</Project>
       <Name>sharpLightFtp</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\InBrowserSettings.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Properties\AppManifest.xml" />
+    <None Include="Properties\OutOfBrowserSettings.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\Silverlight\$(SilverlightVersion)\Microsoft.Silverlight.CSharp.targets" />
   <ProjectExtensions>
