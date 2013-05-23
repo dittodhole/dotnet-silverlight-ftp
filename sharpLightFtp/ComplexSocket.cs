@@ -114,19 +114,5 @@ namespace sharpLightFtp
 
 			return socketAsyncEventArgs;
 		}
-
-		internal FtpReply GetFinalFtpReply(Encoding encoding,
-		                                   TimeSpan timeout)
-		{
-			// TODO transfer this logic into this.Socket.Receive!
-			FtpReply ftpReply;
-			do
-			{
-				ftpReply = this.Socket.Receive(() => this.GetSocketAsyncEventArgsWithUserToken(timeout),
-				                               encoding);
-			} while (ftpReply.FtpResponseType == FtpResponseType.None);
-
-			return ftpReply;
-		}
 	}
 }

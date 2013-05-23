@@ -180,16 +180,6 @@ namespace sharpLightFtp
 							rawListing = ftpReply.Messages;
 						}
 					}
-
-					{
-						var ftpReply = controlComplexSocket.GetFinalFtpReply(this.Encoding,
-						                                                     this.ReceiveTimeout);
-						var success = ftpReply.Success;
-						if (!success)
-						{
-							return Enumerable.Empty<FtpListItem>();
-						}
-					}
 				}
 			}
 
@@ -269,15 +259,9 @@ namespace sharpLightFtp
 						}
 					}
 				}
-
-				{
-					var ftpReply = controlComplexSocket.GetFinalFtpReply(this.Encoding,
-					                                                     this.ReceiveTimeout);
-					var success = ftpReply.Success;
-
-					return success;
-				}
 			}
+
+			return true;
 		}
 
 		public bool Download(FtpFile ftpFile,
@@ -328,16 +312,10 @@ namespace sharpLightFtp
 							return false;
 						}
 					}
-
-					{
-						var ftpReply = controlComplexSocket.GetFinalFtpReply(this.Encoding,
-						                                                     this.ReceiveTimeout);
-						var success = ftpReply.Success;
-
-						return success;
-					}
 				}
 			}
+
+			return true;
 		}
 
 		private ComplexSocket GetPassiveComplexSocket(ComplexSocket complexSocket)

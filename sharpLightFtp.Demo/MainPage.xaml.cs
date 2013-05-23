@@ -18,8 +18,8 @@ namespace sharpLightFtp.Demo
 		private void DoStuff(object sender,
 		                     RoutedEventArgs e)
 		{
-			//this.ConnectAsync();
-			this.GetListingAsync();
+			//this.GetListingAsync();
+			this.DownloadAsync();
 			//this.UploadAsync();
 		}
 
@@ -35,6 +35,39 @@ namespace sharpLightFtp.Demo
 					{
 						var messageBoxText = string.Format("success: {0}",
 						                                   ftpListItems.Count());
+						MessageBox.Show(messageBoxText);
+					});
+				}
+			});
+		}
+
+		private void DownloadAsync()
+		{
+			var ftpClient = this.GetFtpClient();
+			ThreadPool.QueueUserWorkItem(callBack =>
+			{
+				using (ftpClient)
+				{
+					long size;
+					using (var memoryStream = new MemoryStream())
+					{
+						var ftpFile = new FtpFile("README");
+						var success = ftpClient.Download(ftpFile,
+						                                 memoryStream);
+						if (!success)
+						{
+							size = -1;
+						}
+						else
+						{
+							size = memoryStream.Length;
+						}
+					}
+
+					this.Dispatcher.BeginInvoke(() =>
+					{
+						var messageBoxText = string.Format("size: {0}",
+						                                   size);
 						MessageBox.Show(messageBoxText);
 					});
 				}
