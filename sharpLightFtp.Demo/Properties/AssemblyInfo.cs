@@ -5,8 +5,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyProduct("sharpLightFtp.Demo")]
-[assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
 [assembly: Guid("7a732f6f-543f-4cb1-9c99-9cc04a4e0aa7")]
 [assembly: AssemblyVersion("1.0.0.0")]

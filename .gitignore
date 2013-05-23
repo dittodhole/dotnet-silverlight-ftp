@@ -3,6 +3,9 @@ bin
 obj
 *.user
 *.suo
+sharpLightFtp*.nupkg
+sharpLightFtp.Silverlight.*
+sharpLightFtp.NuGetPackage.*
 
 # mstest test results
 TestResults
