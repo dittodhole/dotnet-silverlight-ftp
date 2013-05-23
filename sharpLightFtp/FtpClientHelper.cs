@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace sharpLightFtp
 {
@@ -84,6 +86,80 @@ namespace sharpLightFtp
 			var port = (part1 << 8) + part2;
 
 			return port;
+		}
+
+		public static FtpReply ParseFtpReply(IEnumerable<string> lines)
+		{
+			var ftpResponseType = FtpResponseType.None;
+			var messages = new List<string>();
+			var stringResponseCode = string.Empty;
+			var responseCode = 0;
+			var responseMessage = string.Empty;
+
+			foreach (var line in lines)
+			{
+				var match = Regex.Match(line,
+				                        @"^(\d{3})\s(.*)$");
+				if (match.Success)
+				{
+					if (match.Groups.Count > 1)
+					{
+						stringResponseCode = match.Groups[1].Value;
+					}
+					if (match.Groups.Count > 2)
+					{
+						responseMessage = match.Groups[2].Value;
+					}
+					if (!string.IsNullOrWhiteSpace(stringResponseCode))
+					{
+						var firstCharacter = stringResponseCode.First();
+						var currentCulture = Thread.CurrentThread.CurrentCulture;
+						var character = firstCharacter.ToString(currentCulture);
+						var intFtpResponseType = int.Parse(character);
+						ftpResponseType = (FtpResponseType) intFtpResponseType;
+						responseCode = int.Parse(stringResponseCode);
+					}
+				}
+				messages.Add(line);
+			}
+
+			var ftpReply = new FtpReply(ftpResponseType,
+			                            responseCode,
+			                            responseMessage,
+			                            messages);
+
+			return ftpReply;
+		}
+
+		public static IPEndPoint ParseIPEndPoint(FtpReply ftpReply)
+		{
+			if (!ftpReply.Success)
+			{
+				return null;
+			}
+			var matches = Regex.Match(ftpReply.ResponseMessage,
+			                          "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
+			if (!matches.Success)
+			{
+				return null;
+			}
+			if (matches.Groups.Count != 7)
+			{
+				return null;
+			}
+
+			var ipAddress = ParseIPAddress(from index in Enumerable.Range(1,
+			                                                              4)
+			                               let octet = matches.Groups[index].Value
+			                               select octet);
+			var p1 = matches.Groups[5].Value;
+			var p2 = matches.Groups[6].Value;
+			var port = ParsePassivePort(p1,
+			                            p2);
+			var ipEndPoint = new IPEndPoint(ipAddress,
+			                                port);
+
+			return ipEndPoint;
 		}
 	}
 }

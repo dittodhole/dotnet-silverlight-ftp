@@ -70,45 +70,9 @@ namespace sharpLightFtp.Extensions
 				                          bytes.Length);
 			}
 
-			var ftpResponseType = FtpResponseType.None;
-			var messages = new List<string>();
-			var stringResponseCode = String.Empty;
-			var responseCode = 0;
-			var responseMessage = String.Empty;
-
 			var lines = data.Split(Environment.NewLine.ToCharArray(),
 			                       StringSplitOptions.RemoveEmptyEntries);
-			foreach (var line in lines)
-			{
-				var match = Regex.Match(line,
-				                        @"^(\d{3})\s(.*)$");
-				if (match.Success)
-				{
-					if (match.Groups.Count > 1)
-					{
-						stringResponseCode = match.Groups[1].Value;
-					}
-					if (match.Groups.Count > 2)
-					{
-						responseMessage = match.Groups[2].Value;
-					}
-					if (!String.IsNullOrWhiteSpace(stringResponseCode))
-					{
-						var firstCharacter = stringResponseCode.First();
-						var currentCulture = Thread.CurrentThread.CurrentCulture;
-						var character = firstCharacter.ToString(currentCulture);
-						var intFtpResponseType = Convert.ToInt32(character);
-						ftpResponseType = (FtpResponseType) intFtpResponseType;
-						responseCode = Int32.Parse(stringResponseCode);
-					}
-				}
-				messages.Add(line);
-			}
-
-			var ftpReply = new FtpReply(ftpResponseType,
-			                            responseCode,
-			                            responseMessage,
-			                            messages);
+			var ftpReply = FtpClientHelper.ParseFtpReply(lines);
 
 			return ftpReply;
 		}

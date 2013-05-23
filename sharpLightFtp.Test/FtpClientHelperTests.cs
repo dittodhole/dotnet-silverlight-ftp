@@ -37,5 +37,20 @@ namespace sharpLightFtp.Test
 			//Assert.IsTrue(ftpFeatures.HasFlag(FtpFeatures.MFF));
 			//Assert.IsFalse(ftpFeatures.HasFlag(FtpFeatures.STAT));
 		}
+
+		[TestMethod]
+		public void TestParseFtpReplyForIssue6()
+		{
+			var lines = new[]
+			{
+				"227 Entering Passive Mode (63,245,215,56,204,65)"
+			};
+			var ftpReply = FtpClientHelper.ParseFtpReply(lines);
+			Assert.AreEqual(ftpReply.ResponseCode,
+			                227);
+
+			var ipEndPoint = FtpClientHelper.ParseIPEndPoint(ftpReply);
+			Assert.IsNotNull(ipEndPoint);
+		}
 	}
 }

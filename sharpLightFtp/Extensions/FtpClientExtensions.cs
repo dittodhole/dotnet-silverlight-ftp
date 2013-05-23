@@ -19,16 +19,12 @@ namespace sharpLightFtp.Extensions
 		}
 
 		internal static ComplexSocket CreateTransferComplexSocket(this FtpClient ftpClient,
-		                                                          IPAddress ipAddress,
-		                                                          int port)
+		                                                          IPEndPoint ipEndPoint)
 		{
 			// TODO add check for ftpClient.Port 0 - 0xffff
 
-			var endPoint = new IPEndPoint(ipAddress,
-			                              port);
-
 			var complexSocket = new ComplexSocket(ftpClient,
-			                                      endPoint,
+			                                      ipEndPoint,
 			                                      false);
 
 			return complexSocket;

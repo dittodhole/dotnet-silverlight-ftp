@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -380,27 +381,14 @@ namespace sharpLightFtp
 				return null;
 			}
 
-			var matches = Regex.Match(ftpReply.ResponseMessage,
-			                          "([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+),([0-9]+)");
-			if (!matches.Success)
-			{
-				return null;
-			}
-			if (matches.Groups.Count != 7)
+			var ipEndPoint = FtpClientHelper.ParseIPEndPoint(ftpReply);
+			if (ipEndPoint == null)
 			{
 				return null;
 			}
 
-			var ipAddress = FtpClientHelper.ParseIPAddress(from index in Enumerable.Range(1,
-			                                                                              4)
-			                                               let octet = matches.Groups[index].Value
-			                                               select octet);
-			var p1 = matches.Groups[5].Value;
-			var p2 = matches.Groups[6].Value;
-			var port = FtpClientHelper.ParsePassivePort(p1,
-			                                            p2);
-			var transferComplexSocket = this.CreateTransferComplexSocket(ipAddress,
-			                                                             port);
+			var transferComplexSocket = this.CreateTransferComplexSocket(ipEndPoint);
+
 			return transferComplexSocket;
 		}
 
