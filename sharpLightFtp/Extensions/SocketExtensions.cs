@@ -19,10 +19,7 @@ namespace sharpLightFtp.Extensions
 				return FtpReply.FailedFtpReply;
 			}
 
-			var lines = data.Split(Environment.NewLine.ToCharArray(),
-			                       StringSplitOptions.RemoveEmptyEntries);
-
-			var ftpReply = FtpClientHelper.ParseFtpReply(lines);
+			var ftpReply = FtpClientHelper.ParseFtpReply(data);
 
 			return ftpReply;
 		}

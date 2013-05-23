@@ -8,8 +8,10 @@ namespace sharpLightFtp
 		internal static readonly FtpReply FailedFtpReply = new FtpReply(FtpResponseType.None,
 		                                                                0,
 		                                                                null,
-		                                                                Enumerable.Empty<string>());
+		                                                                Enumerable.Empty<string>(),
+		                                                                null);
 
+		private readonly string _data;
 		private readonly FtpResponseType _ftpResponseType;
 		private readonly List<string> _messages = new List<string>();
 		private readonly int _responseCode;
@@ -18,11 +20,13 @@ namespace sharpLightFtp
 		internal FtpReply(FtpResponseType ftpResponseType,
 		                  int responseCode,
 		                  string responseMessage,
-		                  IEnumerable<string> messages)
+		                  IEnumerable<string> messages,
+		                  string data)
 		{
 			this._ftpResponseType = ftpResponseType;
 			this._responseCode = responseCode;
 			this._responseMessage = responseMessage;
+			this._data = data;
 			this._messages.AddRange(messages);
 		}
 
@@ -85,6 +89,14 @@ namespace sharpLightFtp
 						return true;
 				}
 				return false;
+			}
+		}
+
+		public string Data
+		{
+			get
+			{
+				return this._data;
 			}
 		}
 	}

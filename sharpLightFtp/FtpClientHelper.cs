@@ -88,7 +88,7 @@ namespace sharpLightFtp
 			return port;
 		}
 
-		public static FtpReply ParseFtpReply(IEnumerable<string> lines)
+		public static FtpReply ParseFtpReply(string data)
 		{
 			var ftpResponseType = FtpResponseType.None;
 			var messages = new List<string>();
@@ -96,6 +96,8 @@ namespace sharpLightFtp
 			var responseCode = 0;
 			var responseMessage = string.Empty;
 
+			var lines = data.Split(Environment.NewLine.ToCharArray(),
+			                       StringSplitOptions.RemoveEmptyEntries);
 			foreach (var line in lines)
 			{
 				var match = Regex.Match(line,
@@ -126,7 +128,8 @@ namespace sharpLightFtp
 			var ftpReply = new FtpReply(ftpResponseType,
 			                            responseCode,
 			                            responseMessage,
-			                            messages);
+			                            messages,
+			                            data);
 
 			return ftpReply;
 		}

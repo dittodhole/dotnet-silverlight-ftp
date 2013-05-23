@@ -8,7 +8,7 @@ namespace sharpLightFtp
 		internal static SocketAsyncEventArgs WrapAsyncCall(Func<SocketAsyncEventArgs, bool> predicate,
 		                                                   SocketAsyncEventArgs socketAsyncEventArgs)
 		{
-			// TODO recheck the signal!
+			// TODO signal really needed? no other way?
 			var async = predicate.Invoke(socketAsyncEventArgs);
 			if (async)
 			{

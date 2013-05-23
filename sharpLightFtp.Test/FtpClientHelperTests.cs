@@ -41,11 +41,8 @@ namespace sharpLightFtp.Test
 		[TestMethod]
 		public void TestParseFtpReplyForIssue6()
 		{
-			var lines = new[]
-			{
-				"227 Entering Passive Mode (63,245,215,56,204,65)"
-			};
-			var ftpReply = FtpClientHelper.ParseFtpReply(lines);
+			const string data = @"227 Entering Passive Mode (63,245,215,56,204,65)";
+			var ftpReply = FtpClientHelper.ParseFtpReply(data);
 			Assert.AreEqual(ftpReply.ResponseCode,
 			                227);
 

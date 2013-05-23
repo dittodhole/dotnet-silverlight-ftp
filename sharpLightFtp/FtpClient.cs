@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using sharpLightFtp.Extensions;
 
@@ -67,7 +65,7 @@ namespace sharpLightFtp
 			this.ConnectTimeout = TimeSpan.FromSeconds(30);
 			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
 			this.SendTimeout = TimeSpan.FromMinutes(5);
-			this.WaitBetweenSendAndReceive = TimeSpan.Zero;
+			this.WaitBeforeReceiveTimeSpan = TimeSpan.Zero;
 			this.SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http;
 
 			this._ftpFeatures = new Lazy<FtpFeatures>(() =>
@@ -105,7 +103,7 @@ namespace sharpLightFtp
 		public int Port { get; set; }
 		public int SendBufferSize { get; set; }
 		public int ReceiveBufferSize { get; set; }
-		public TimeSpan WaitBetweenSendAndReceive { get; set; }
+		public TimeSpan WaitBeforeReceiveTimeSpan { get; set; }
 
 		public void Dispose()
 		{
@@ -181,8 +179,10 @@ namespace sharpLightFtp
 						}
 
 						{
-							// TODO this.WaitBetweenSendAndReceive also applicable here?
+							this.WaitBeforeReceive();
+
 							// reading transfer
+
 							string data;
 							var success = transferComplexSocket.Socket.ReceiveIntoString(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 							                                                             this.Encoding,
@@ -197,18 +197,11 @@ namespace sharpLightFtp
 						}
 					}
 
-					// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
-					if (!ftpReply.Completed)
+					// reading LIST/... (226 Directory send OK)
+					if (!this.AlreadyCompletedOrFinalFtpReplySuccess(controlComplexSocket,
+					                                                 ftpReply))
 					{
-						// TODO this.WaitBetweenSendAndReceive also applicable here?
-						// reading LIST/... (226 Directory send OK)
-						ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-						                                               this.Encoding);
-						var success = ftpReply.Success;
-						if (!success)
-						{
-							return Enumerable.Empty<FtpListItem>();
-						}
+						return Enumerable.Empty<FtpListItem>();
 					}
 				}
 			}
@@ -284,7 +277,6 @@ namespace sharpLightFtp
 					}
 
 					{
-						// TODO this.WaitBetweenSendAndReceive also applicable here?
 						// sending transfer socket
 						var success = transferComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
 						                                                stream);
@@ -295,18 +287,11 @@ namespace sharpLightFtp
 					}
 				}
 
-				// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
-				if (!ftpReply.Completed)
+				// reading STOR (226 ...)
+				if (!this.AlreadyCompletedOrFinalFtpReplySuccess(controlComplexSocket,
+				                                                 ftpReply))
 				{
-					// TODO this.WaitBetweenSendAndReceive also applicable here?
-					// reading STOR (226 ...)
-					ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-					                                               this.Encoding);
-					var success = ftpReply.Success;
-					if (!success)
-					{
-						return false;
-					}
+					return false;
 				}
 			}
 
@@ -359,7 +344,8 @@ namespace sharpLightFtp
 					}
 
 					{
-						// TODO this.WaitBetweenSendAndReceive also applicable here?
+						this.WaitBeforeReceive();
+
 						// reading transfer socket
 						var success = transferComplexSocket.Socket.ReceiveIntoStream(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 						                                                             stream);
@@ -370,18 +356,11 @@ namespace sharpLightFtp
 					}
 				}
 
-				// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
-				if (!ftpReply.Completed)
+				// reading RETR (226 Transfer complete)
+				if (!this.AlreadyCompletedOrFinalFtpReplySuccess(controlComplexSocket,
+				                                                 ftpReply))
 				{
-					// TODO this.WaitBetweenSendAndReceive also applicable here?
-					// reading RETR (226 Transfer complete)
-					ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-					                                               this.Encoding);
-					var success = ftpReply.Success;
-					if (!success)
-					{
-						return false;
-					}
+					return false;
 				}
 			}
 
@@ -441,24 +420,13 @@ namespace sharpLightFtp
 		                         string command,
 		                         params object[] args)
 		{
-			command = string.Format(command,
-			                        args);
-			if (!command.EndsWith(Environment.NewLine))
 			{
-				command = string.Concat(command,
-				                        Environment.NewLine);
-			}
-
-			{
-				var buffer = this.Encoding.GetBytes(command);
-				using (var memoryStream = new MemoryStream(buffer))
+				var success = this.WrappedControlSocketSend(controlComplexSocket,
+				                                            command,
+				                                            args);
+				if (!success)
 				{
-					var success = controlComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
-					                                               memoryStream);
-					if (!success)
-					{
-						return FtpReply.FailedFtpReply;
-					}
+					return FtpReply.FailedFtpReply;
 				}
 			}
 			if (interimPredicate != null)
@@ -470,16 +438,8 @@ namespace sharpLightFtp
 				}
 			}
 			{
-				// issue #6
-				var waitBetweenSendAndReceive = this.WaitBetweenSendAndReceive;
-				if (waitBetweenSendAndReceive > TimeSpan.Zero)
-				{
-					Thread.Sleep(waitBetweenSendAndReceive);
-				}
-			}
-			{
-				var ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-				                                                   this.Encoding);
+				var ftpReply = this.WrappedControlSocketReceive(controlComplexSocket);
+
 				return ftpReply;
 			}
 		}
@@ -488,6 +448,8 @@ namespace sharpLightFtp
 		                           FtpFileSystemObject ftpFileSystemObject,
 		                           bool createDirectoryIfNotExists)
 		{
+			// TODO it would be better if we check the current DIR to then switch to the target, for now I assume that we are in /
+
 			var hierarchy = ftpFileSystemObject.GetHierarchy()
 			                                   .Reverse();
 
@@ -564,8 +526,7 @@ namespace sharpLightFtp
 				}
 				else
 				{
-					var ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-					                                                   this.Encoding);
+					var ftpReply = this.WrappedControlSocketReceive(controlComplexSocket);
 					if (!ftpReply.Success)
 					{
 						controlComplexSocket = null;
@@ -598,6 +559,73 @@ namespace sharpLightFtp
 			this._authenticated = ftpReply.Success;
 
 			return this._authenticated;
+		}
+
+		#endregion
+
+		#region communcation helpers
+
+		private bool WrappedControlSocketSend(ComplexSocket controlComplexSocket,
+		                                      string command,
+		                                      params object[] args)
+		{
+			command = string.Format(command,
+			                        args);
+			if (!command.EndsWith(Environment.NewLine))
+			{
+				command = string.Concat(command,
+				                        Environment.NewLine);
+			}
+
+			// TODO add loggin for issue #2
+
+			{
+				var buffer = this.Encoding.GetBytes(command);
+				using (var memoryStream = new MemoryStream(buffer))
+				{
+					var success = controlComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
+					                                               memoryStream);
+					return success;
+				}
+			}
+		}
+
+		private FtpReply WrappedControlSocketReceive(ComplexSocket controlComplexSocket)
+		{
+			this.WaitBeforeReceive();
+
+			var ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+			                                                   this.Encoding);
+
+			// TODO add logging for issue #2
+
+			return ftpReply;
+		}
+
+		private void WaitBeforeReceive()
+		{
+			// issue #6
+			var waitBetweenSendAndReceive = this.WaitBeforeReceiveTimeSpan;
+			if (waitBetweenSendAndReceive > TimeSpan.Zero)
+			{
+				Thread.Sleep(waitBetweenSendAndReceive);
+			}
+		}
+
+		private bool AlreadyCompletedOrFinalFtpReplySuccess(ComplexSocket controlComplexSocket,
+		                                                    FtpReply ftpReply)
+		{
+			// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
+
+			if (ftpReply.Completed)
+			{
+				return true;
+			}
+
+			ftpReply = this.WrappedControlSocketReceive(controlComplexSocket);
+			var success = ftpReply.Success;
+
+			return success;
 		}
 
 		#endregion
