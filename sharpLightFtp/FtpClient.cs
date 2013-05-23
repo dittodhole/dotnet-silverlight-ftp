@@ -179,10 +179,17 @@ namespace sharpLightFtp
 
 						{
 							// reading transfer
-							// TODO ftpReply is wrong here!
-							var fooFtpReply = transferComplexSocket.Socket.Receive(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-							                                                       this.Encoding);
-							rawListing = fooFtpReply.Messages;
+							string data;
+							var success = transferComplexSocket.Socket.ReceiveIntoString(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+							                                                             this.Encoding,
+							                                                             out data);
+							if (!success)
+							{
+								return Enumerable.Empty<FtpListItem>();
+							}
+
+							rawListing = data.Split(Environment.NewLine.ToCharArray(),
+							                        StringSplitOptions.RemoveEmptyEntries);
 						}
 					}
 
@@ -345,7 +352,7 @@ namespace sharpLightFtp
 					}
 
 					{
-						// send transfer socket
+						// reading transfer socket
 						var success = transferComplexSocket.Socket.ReceiveIntoStream(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 						                                                             stream);
 						if (!success)

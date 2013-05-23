@@ -1,16 +1,57 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace sharpLightFtp.Extensions
 {
 	internal static class SocketExtensions
 	{
+		internal static FtpReply Receive(this Socket socket,
+		                                 Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
+		                                 Encoding encoding)
+		{
+			string data;
+			if (!socket.ReceiveIntoString(socketAsyncEventArgsPredicate,
+			                              encoding,
+			                              out data))
+			{
+				return FtpReply.FailedFtpReply;
+			}
+
+			var lines = data.Split(Environment.NewLine.ToCharArray(),
+			                       StringSplitOptions.RemoveEmptyEntries);
+
+			var ftpReply = FtpClientHelper.ParseFtpReply(lines);
+
+			return ftpReply;
+		}
+
+		internal static bool ReceiveIntoString(this Socket socket,
+		                                       Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
+		                                       Encoding encoding,
+		                                       out string data)
+		{
+			byte[] bytes;
+			using (var memoryStream = new MemoryStream())
+			{
+				var success = socket.ReceiveIntoStream(socketAsyncEventArgsPredicate,
+				                                       memoryStream);
+				if (!success)
+				{
+					data = null;
+					return false;
+				}
+
+				bytes = memoryStream.ToArray();
+			}
+
+			data = encoding.GetString(bytes,
+			                          0,
+			                          bytes.Length);
+			return true;
+		}
+
 		internal static bool ReceiveIntoStream(this Socket socket,
 		                                       Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
 		                                       Stream stream)
@@ -48,33 +89,6 @@ namespace sharpLightFtp.Extensions
 			} while (bytesTransferred == bufferSize);
 
 			return true;
-		}
-
-		internal static FtpReply Receive(this Socket socket,
-		                                 Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
-		                                 Encoding encoding)
-		{
-			string data;
-			using (var memoryStream = new MemoryStream())
-			{
-				var success = socket.ReceiveIntoStream(socketAsyncEventArgsPredicate,
-				                                       memoryStream);
-				if (!success)
-				{
-					return FtpReply.FailedFtpReply;
-				}
-
-				var bytes = memoryStream.ToArray();
-				data = encoding.GetString(bytes,
-				                          0,
-				                          bytes.Length);
-			}
-
-			var lines = data.Split(Environment.NewLine.ToCharArray(),
-			                       StringSplitOptions.RemoveEmptyEntries);
-			var ftpReply = FtpClientHelper.ParseFtpReply(lines);
-
-			return ftpReply;
 		}
 
 		internal static bool Send(this Socket socket,
