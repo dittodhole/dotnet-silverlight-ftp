@@ -70,7 +70,6 @@ namespace sharpLightFtp
 			this._ftpFeatures = new Lazy<FtpFeatures>(() =>
 			{
 				var ftpReply = this.Execute(this._controlComplexSocket,
-				                            null,
 				                            "FEAT");
 				if (!ftpReply.Success)
 				{
@@ -154,30 +153,48 @@ namespace sharpLightFtp
 				                                    path);
 
 				{
+					// sending PASV
+					// reading PASV
 					var transferComplexSocket = this.GetPassiveComplexSocket(controlComplexSocket);
 					if (transferComplexSocket == null)
 					{
 						return Enumerable.Empty<FtpListItem>();
 					}
 
+					FtpReply ftpReply;
+
 					using (transferComplexSocket)
 					{
+						// sending LIST/...
+						// open PASV
+						// reading LIST/... (150 Here comes the directory listing)
+						ftpReply = this.Execute(controlComplexSocket,
+						                        () => transferComplexSocket.Connect(this.ConnectTimeout),
+						                        concreteCommand);
+						if (!ftpReply.Success)
 						{
-							var ftpReply = this.Execute(controlComplexSocket,
-							                            () => transferComplexSocket.Connect(this.ConnectTimeout),
-							                            concreteCommand);
-							var success = ftpReply.Success;
-							if (!success)
-							{
-								return Enumerable.Empty<FtpListItem>();
-							}
+							return Enumerable.Empty<FtpListItem>();
 						}
 
 						{
+							// reading transfer
 							// TODO ftpReply is wrong here!
-							var ftpReply = transferComplexSocket.Socket.Receive(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-							                                                    this.Encoding);
-							rawListing = ftpReply.Messages;
+							var fooFtpReply = transferComplexSocket.Socket.Receive(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+							                                                       this.Encoding);
+							rawListing = fooFtpReply.Messages;
+						}
+					}
+
+					// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
+					if (!ftpReply.Completed)
+					{
+						// reading LIST/... (226 Directory send OK)
+						ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+						                                               this.Encoding);
+						var success = ftpReply.Success;
+						if (!success)
+						{
+							return Enumerable.Empty<FtpListItem>();
 						}
 					}
 				}
@@ -230,33 +247,50 @@ namespace sharpLightFtp
 					}
 				}
 
+				// sending PASV
+				// reading PASV
 				var transferComplexSocket = this.GetPassiveComplexSocket(controlComplexSocket);
 				if (transferComplexSocket == null)
 				{
 					return false;
 				}
 
+				FtpReply ftpReply;
 				using (transferComplexSocket)
 				{
+					// sending STOR
+					// open transfer socket
+					// reading STOR (150 ...)
+					ftpReply = this.Execute(controlComplexSocket,
+					                        () => transferComplexSocket.Connect(this.ConnectTimeout),
+					                        "STOR {0}",
+					                        ftpFile.Name);
+					if (!ftpReply.Success)
 					{
-						var ftpReply = this.Execute(controlComplexSocket,
-						                            () => transferComplexSocket.Connect(this.ConnectTimeout),
-						                            "STOR {0}",
-						                            ftpFile.Name);
-						var success = ftpReply.Success;
-						if (!success)
-						{
-							return false;
-						}
+						return false;
 					}
 
 					{
+						// sending transfer socket
 						var success = transferComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
 						                                                stream);
 						if (!success)
 						{
 							return false;
 						}
+					}
+				}
+
+				// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
+				if (!ftpReply.Completed)
+				{
+					// reading STOR (226 ...)
+					ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+					                                               this.Encoding);
+					var success = ftpReply.Success;
+					if (!success)
+					{
+						return false;
 					}
 				}
 			}
@@ -285,32 +319,51 @@ namespace sharpLightFtp
 					}
 				}
 
+				// sending PASV
+				// reading PASV
 				var transferComplexSocket = this.GetPassiveComplexSocket(controlComplexSocket);
 				if (transferComplexSocket == null)
 				{
 					return false;
 				}
 
+				FtpReply ftpReply;
+
 				using (transferComplexSocket)
 				{
+					// sending RETR
+					// open transfer socket
+					// reading RETR (150 Opening BINARY mode data connection...)
+					ftpReply = this.Execute(controlComplexSocket,
+					                        () => transferComplexSocket.Connect(this.ConnectTimeout),
+					                        "RETR {0}",
+					                        ftpFile.Name);
+					if (!ftpReply.Success)
 					{
-						var ftpReply = this.Execute(controlComplexSocket,
-						                            () => transferComplexSocket.Connect(this.ConnectTimeout),
-						                            "RETR {0}",
-						                            ftpFile.Name);
-						if (!ftpReply.Success)
-						{
-							return false;
-						}
+						return false;
 					}
 
 					{
+						// send transfer socket
 						var success = transferComplexSocket.Socket.ReceiveIntoStream(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 						                                                             stream);
 						if (!success)
 						{
 							return false;
 						}
+					}
+				}
+
+				// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
+				if (!ftpReply.Completed)
+				{
+					// reading RETR (226 Transfer complete)
+					ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+					                                               this.Encoding);
+					var success = ftpReply.Success;
+					if (!success)
+					{
+						return false;
 					}
 				}
 			}
@@ -321,7 +374,6 @@ namespace sharpLightFtp
 		private ComplexSocket GetPassiveComplexSocket(ComplexSocket complexSocket)
 		{
 			var ftpReply = this.Execute(complexSocket,
-			                            null,
 			                            "PASV");
 			if (!ftpReply.Success)
 			{
@@ -364,11 +416,20 @@ namespace sharpLightFtp
 				}
 
 				var ftpReply = this.Execute(controlComplexSocket,
-				                            null,
 				                            command,
 				                            args);
 				return ftpReply;
 			}
+		}
+
+		private FtpReply Execute(ComplexSocket controlComplexSocket,
+		                         string command,
+		                         params object[] args)
+		{
+			return this.Execute(controlComplexSocket,
+			                    null,
+			                    command,
+			                    args);
 		}
 
 		private FtpReply Execute(ComplexSocket controlComplexSocket,
@@ -422,7 +483,6 @@ namespace sharpLightFtp
 			{
 				var name = element.Name;
 				var ftpReply = this.Execute(complexSocket,
-				                            null,
 				                            "CWD {0}",
 				                            name);
 				if (!ftpReply.Success)
@@ -439,7 +499,6 @@ namespace sharpLightFtp
 							return false;
 						}
 						ftpReply = this.Execute(complexSocket,
-						                        null,
 						                        "MKD {0}",
 						                        name);
 						var success = ftpReply.Success;
@@ -515,13 +574,11 @@ namespace sharpLightFtp
 			}
 
 			var ftpReply = this.Execute(this._controlComplexSocket,
-			                            null,
 			                            "USER {0}",
 			                            this.Username);
 			if (ftpReply.FtpResponseType == FtpResponseType.PositiveIntermediate)
 			{
 				ftpReply = this.Execute(this._controlComplexSocket,
-				                        null,
 				                        "PASS {0}",
 				                        this.Password);
 			}

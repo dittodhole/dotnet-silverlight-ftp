@@ -72,5 +72,20 @@ namespace sharpLightFtp
 				return false;
 			}
 		}
+
+		public bool Completed
+		{
+			get
+			{
+				switch (this.FtpResponseType)
+				{
+					case FtpResponseType.PermanentNegativeCompletion:
+					case FtpResponseType.PositiveCompletion:
+					case FtpResponseType.TransientNegativeCompletion:
+						return true;
+				}
+				return false;
+			}
+		}
 	}
 }
