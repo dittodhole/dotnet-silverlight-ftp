@@ -1,21 +1,16 @@
 ﻿using System.Net.Sockets;
-using System.Text;
 
 namespace sharpLightFtp.Extensions
 {
 	public static class SocketAsyncEventArgsExtensions
 	{
-		public static string GetData(this SocketAsyncEventArgs socketAsyncEventArgs,
-		                             Encoding encoding)
+		public static bool GetSuccess(this SocketAsyncEventArgs socketAsyncEventArgs)
 		{
-			var buffer = socketAsyncEventArgs.Buffer;
-			var offset = socketAsyncEventArgs.Offset;
-			var bytesTransferred = socketAsyncEventArgs.BytesTransferred;
-			var data = encoding.GetString(buffer,
-			                              offset,
-			                              bytesTransferred);
+			// TODO check against .ConnectByNameError
+			// TODO check against .SocketError
+			// TODO check against ((SocketAsyncEventArgsUserToken) .UserToken).TimeoutExpired
 
-			return data;
+			return socketAsyncEventArgs.SocketError == SocketError.Success;
 		}
 	}
 }

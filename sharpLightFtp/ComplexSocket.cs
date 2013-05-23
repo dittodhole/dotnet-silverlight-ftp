@@ -1,9 +1,7 @@
 ﻿using System;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
@@ -25,6 +23,9 @@ namespace sharpLightFtp
 			this._ftpClient = ftpClient;
 			this._endPoint = endPoint;
 			this._isControlSocket = isControlSocket;
+
+			this._socket.ReceiveBufferSize = ftpClient.ReceiveBufferSize;
+			this._socket.SendBufferSize = ftpClient.SendBufferSize;
 		}
 
 		internal EndPoint EndPoint
@@ -76,74 +77,40 @@ namespace sharpLightFtp
 
 		#endregion
 
-		private void RaiseFtpCommandFailedAsync(SocketAsyncEventArgs socketAsyncEventArgs,
-		                                        InternalCommandResult internalCommandResult)
-		{
-			switch (internalCommandResult)
-			{
-				case InternalCommandResult.ExceptionOccured:
-					var ftpCommandFailedEventArgs = new FtpCommandFailedEventArgs(socketAsyncEventArgs);
-					this.FtpClient.RaiseFtpCommandFailedAsync(ftpCommandFailedEventArgs);
-					break;
-				case InternalCommandResult.NoReceivedWithinTime:
-					var ftpCommandTimedOutEventArgs = new FtpCommandTimedOutEventArgs(socketAsyncEventArgs);
-					this.FtpClient.RaiseFtpCommandFailedAsync(ftpCommandTimedOutEventArgs);
-					break;
-			}
-		}
-
 		internal bool Connect(TimeSpan timeout)
 		{
-			using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
+			using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgsWithUserToken(timeout))
 			{
-				var internalCommandResult = SocketHelper.WrapAsyncCall(this._socket.ConnectAsync,
-				                                                       socketAsyncEventArgs);
-				if (internalCommandResult != InternalCommandResult.Success)
-				{
-					this.RaiseFtpCommandFailedAsync(socketAsyncEventArgs,
-					                                internalCommandResult);
-					return false;
-				}
-			}
+				SocketHelper.WrapAsyncCall(this._socket.ConnectAsync,
+				                           socketAsyncEventArgs);
+				var success = socketAsyncEventArgs.GetSuccess();
 
-			return true;
+				return success;
+			}
 		}
 
-		internal bool Send(Stream stream,
-		                   TimeSpan timeout)
+		internal SocketAsyncEventArgs GetSocketAsyncEventArgs()
 		{
-			var buffer = this._socket.GetSendBuffer();
-			int read;
-			while ((read = stream.Read(buffer,
-			                           0,
-			                           buffer.Length)) > 0)
+			var socketAsyncEventArgs = new SocketAsyncEventArgs
 			{
-				using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
-				{
-					socketAsyncEventArgs.SetBuffer(buffer,
-					                               0,
-					                               read);
-					var internalCommandResult = SocketHelper.WrapAsyncCall(this._socket.SendAsync,
-					                                                       socketAsyncEventArgs);
-					if (internalCommandResult != InternalCommandResult.Success)
-					{
-						this.RaiseFtpCommandFailedAsync(socketAsyncEventArgs,
-						                                internalCommandResult);
-						return false;
-					}
-				}
-			}
+				RemoteEndPoint = this.EndPoint,
+				SocketClientAccessPolicyProtocol = this.FtpClient.SocketClientAccessPolicyProtocol
+			};
 
-			return true;
+			return socketAsyncEventArgs;
 		}
 
-		internal SocketAsyncEventArgs GetSocketAsyncEventArgs(TimeSpan timeout)
+		internal SocketAsyncEventArgs GetSocketAsyncEventArgsWithUserToken(TimeSpan timeout)
 		{
-			var endPoint = this.EndPoint;
-			var ftpClient = this.FtpClient;
-			var socketClientAccessPolicyProtocol = ftpClient.SocketClientAccessPolicyProtocol;
-			var socketAsyncEventArgs = endPoint.GetSocketAsyncEventArgs(socketClientAccessPolicyProtocol,
-			                                                            timeout);
+			var socketAsyncEventArgs = this.GetSocketAsyncEventArgs();
+			socketAsyncEventArgs.UserToken = new SocketAsyncEventArgsUserToken(timeout);
+			socketAsyncEventArgs.Completed += (sender,
+			                                   args) =>
+			{
+				var userToken = args.UserToken;
+				var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
+				socketAsyncEventArgsUserToken.Signal();
+			};
 
 			return socketAsyncEventArgs;
 		}
@@ -151,14 +118,12 @@ namespace sharpLightFtp
 		internal FtpReply GetFinalFtpReply(Encoding encoding,
 		                                   TimeSpan timeout)
 		{
+			// TODO transfer this logic into this.Socket.Receive!
 			FtpReply ftpReply;
 			do
 			{
-				using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs(timeout))
-				{
-					ftpReply = this.Socket.Receive(socketAsyncEventArgs,
-					                               encoding);
-				}
+				ftpReply = this.Socket.Receive(() => this.GetSocketAsyncEventArgsWithUserToken(timeout),
+				                               encoding);
 			} while (ftpReply.FtpResponseType == FtpResponseType.None);
 
 			return ftpReply;

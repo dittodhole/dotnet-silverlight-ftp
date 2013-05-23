@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -10,81 +11,98 @@ namespace sharpLightFtp.Extensions
 {
 	internal static class SocketExtensions
 	{
-		internal static byte[] GetReceiveBuffer(this Socket socket)
+		internal static bool ReceiveIntoStream(this Socket socket,
+		                                       Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
+		                                       Stream stream)
 		{
-			var receiveBufferSize = socket.ReceiveBufferSize;
-			var buffer = new byte[receiveBufferSize];
+			var bufferSize = socket.ReceiveBufferSize;
+			int bytesTransferred;
+			do
+			{
+				byte[] buffer;
+				int offset;
+				// TODO maybe reuse the socketAsyncEventArgs, but not 100% clean ...
+				using (var socketAsyncEventArgs = socketAsyncEventArgsPredicate.Invoke())
+				{
+					buffer = new byte[bufferSize];
+					socketAsyncEventArgs.SetBuffer(buffer,
+					                               0,
+					                               bufferSize);
 
-			return buffer;
-		}
+					SocketHelper.WrapAsyncCall(socket.ReceiveAsync,
+					                           socketAsyncEventArgs);
+					var success = socketAsyncEventArgs.GetSuccess();
+					if (!success)
+					{
+						return false;
+					}
 
-		internal static byte[] GetSendBuffer(this Socket socket)
-		{
-			var sendBufferSize = socket.SendBufferSize;
-			var buffer = new byte[sendBufferSize];
+					buffer = socketAsyncEventArgs.Buffer;
+					bytesTransferred = socketAsyncEventArgs.BytesTransferred;
+					offset = socketAsyncEventArgs.Offset;
+				}
 
-			return buffer;
+				stream.Write(buffer,
+				             offset,
+				             bytesTransferred);
+			} while (bytesTransferred == bufferSize);
+
+			return true;
 		}
 
 		internal static FtpReply Receive(this Socket socket,
-		                                 SocketAsyncEventArgs socketAsyncEventArgs,
+		                                 Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
 		                                 Encoding encoding)
 		{
-			var responseBuffer = socket.GetReceiveBuffer();
-			socketAsyncEventArgs.SetBuffer(responseBuffer,
-			                               0,
-			                               responseBuffer.Length);
+			string data;
+			using (var memoryStream = new MemoryStream())
+			{
+				var success = socket.ReceiveIntoStream(socketAsyncEventArgsPredicate,
+				                                       memoryStream);
+				if (!success)
+				{
+					return FtpReply.FailedFtpReply;
+				}
+
+				var bytes = memoryStream.ToArray();
+				data = encoding.GetString(bytes,
+				                          0,
+				                          bytes.Length);
+			}
+
 			var ftpResponseType = FtpResponseType.None;
 			var messages = new List<string>();
-			var stringResponseCode = string.Empty;
+			var stringResponseCode = String.Empty;
 			var responseCode = 0;
-			var responseMessage = string.Empty;
+			var responseMessage = String.Empty;
 
-			while (SocketHelper.WrapAsyncCall(socket.ReceiveAsync,
-			                                  socketAsyncEventArgs) == InternalCommandResult.Success)
+			var lines = data.Split(Environment.NewLine.ToCharArray(),
+			                       StringSplitOptions.RemoveEmptyEntries);
+			foreach (var line in lines)
 			{
-				var data = socketAsyncEventArgs.GetData(encoding);
-				if (string.IsNullOrWhiteSpace(data))
+				var match = Regex.Match(line,
+				                        @"^(\d{3})\s(.*)$");
+				if (match.Success)
 				{
-					break;
-				}
-				var lines = data.Split(Environment.NewLine.ToCharArray(),
-				                       StringSplitOptions.RemoveEmptyEntries);
-				foreach (var line in lines)
-				{
-					var match = Regex.Match(line,
-					                        @"^(\d{3})\s(.*)$");
-					if (match.Success)
+					if (match.Groups.Count > 1)
 					{
-						if (match.Groups.Count > 1)
-						{
-							stringResponseCode = match.Groups[1].Value;
-						}
-						if (match.Groups.Count > 2)
-						{
-							responseMessage = match.Groups[2].Value;
-						}
-						if (!string.IsNullOrWhiteSpace(stringResponseCode))
-						{
-							var firstCharacter = stringResponseCode.First();
-							var currentCulture = Thread.CurrentThread.CurrentCulture;
-							var character = firstCharacter.ToString(currentCulture);
-							var intFtpResponseType = Convert.ToInt32(character);
-							ftpResponseType = (FtpResponseType) intFtpResponseType;
-							responseCode = Int32.Parse(stringResponseCode);
-						}
+						stringResponseCode = match.Groups[1].Value;
 					}
-					else
+					if (match.Groups.Count > 2)
 					{
-						messages.Add(line);
+						responseMessage = match.Groups[2].Value;
+					}
+					if (!String.IsNullOrWhiteSpace(stringResponseCode))
+					{
+						var firstCharacter = stringResponseCode.First();
+						var currentCulture = Thread.CurrentThread.CurrentCulture;
+						var character = firstCharacter.ToString(currentCulture);
+						var intFtpResponseType = Convert.ToInt32(character);
+						ftpResponseType = (FtpResponseType) intFtpResponseType;
+						responseCode = Int32.Parse(stringResponseCode);
 					}
 				}
-
-				var finished = ftpResponseType != FtpResponseType.None;
-				if (finished)
-				{
-					break;
-				}
+				messages.Add(line);
 			}
 
 			var ftpReply = new FtpReply(ftpResponseType,
@@ -93,6 +111,36 @@ namespace sharpLightFtp.Extensions
 			                            messages);
 
 			return ftpReply;
+		}
+
+		internal static bool Send(this Socket socket,
+		                          Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
+		                          Stream stream)
+		{
+			var bufferSize = socket.SendBufferSize;
+			int bytesRead;
+			do
+			{
+				using (var socketAsyncEventArgs = socketAsyncEventArgsPredicate.Invoke())
+				{
+					var buffer = new byte[bufferSize];
+					bytesRead = stream.Read(buffer,
+					                        0,
+					                        buffer.Length);
+					socketAsyncEventArgs.SetBuffer(buffer,
+					                               0,
+					                               bytesRead);
+					SocketHelper.WrapAsyncCall(socket.SendAsync,
+					                           socketAsyncEventArgs);
+					var success = socketAsyncEventArgs.GetSuccess();
+					if (!success)
+					{
+						return false;
+					}
+				}
+			} while (bytesRead == bufferSize);
+
+			return true;
 		}
 	}
 }

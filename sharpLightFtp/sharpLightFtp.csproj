@@ -86,17 +86,10 @@
     <Reference Include="System.Windows.Browser" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Extensions\EndPointExtensions.cs" />
     <Compile Include="Extensions\SocketExtensions.cs" />
     <Compile Include="FtpReply.cs" />
     <Compile Include="ComplexSocket.cs" />
     <Compile Include="Enums.cs" />
-    <Compile Include="EventArgs\BaseFtpCommandFailedEventArgs.cs" />
-    <Compile Include="EventArgs\BaseFtpCommandWithSocketEventArgsFailedEventArgs.cs" />
-    <Compile Include="EventArgs\FtpAuthenticationFailedEventArgs.cs" />
-    <Compile Include="EventArgs\FtpCommandTimedOutEventArgs.cs" />
-    <Compile Include="Extensions\ComplexSocketExtensions.cs" />
-    <Compile Include="EventArgs\FtpCommandFailedEventArgs.cs" />
     <Compile Include="Extensions\FtpClientExtensions.cs" />
     <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
     <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />

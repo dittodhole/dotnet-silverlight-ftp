@@ -5,12 +5,11 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
+	// TODO readd logging
 	public sealed class FtpClient : IDisposable
 	{
 		private readonly Lazy<FtpFeatures> _ftpFeatures;
@@ -60,6 +59,8 @@ namespace sharpLightFtp
 
 		public FtpClient()
 		{
+			this.ReceiveBufferSize = 1 << 13; // 8192
+			this.SendBufferSize = 1 << 13; // 8192
 			this.Encoding = Encoding.UTF8;
 			this.ConnectTimeout = TimeSpan.FromSeconds(30);
 			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
@@ -100,6 +101,8 @@ namespace sharpLightFtp
 		public string Password { get; set; }
 		public SocketClientAccessPolicyProtocol SocketClientAccessPolicyProtocol { get; set; }
 		public int Port { get; set; }
+		public int SendBufferSize { get; set; }
+		public int ReceiveBufferSize { get; set; }
 
 		public void Dispose()
 		{
@@ -112,18 +115,6 @@ namespace sharpLightFtp
 				}
 
 				controlComplexSocket.Dispose();
-			}
-		}
-
-		public event EventHandler<BaseFtpCommandFailedEventArgs> FtpCommandFailed;
-
-		internal void RaiseFtpCommandFailedAsync(BaseFtpCommandFailedEventArgs e)
-		{
-			var handler = this.FtpCommandFailed;
-			if (handler != null)
-			{
-				Task.Factory.StartNew(() => handler.Invoke(this,
-				                                           e));
 			}
 		}
 
@@ -175,15 +166,16 @@ namespace sharpLightFtp
 							var ftpReply = this.Execute(controlComplexSocket,
 							                            () => transferComplexSocket.Connect(this.ConnectTimeout),
 							                            concreteCommand);
-							if (!ftpReply.Success)
+							var success = ftpReply.Success;
+							if (!success)
 							{
 								return Enumerable.Empty<FtpListItem>();
 							}
 						}
 
-						using (var socketAsyncEventArgs = transferComplexSocket.GetSocketAsyncEventArgs(this.ReceiveTimeout))
 						{
-							var ftpReply = transferComplexSocket.Socket.Receive(socketAsyncEventArgs,
+							// TODO ftpReply is wrong here!
+							var ftpReply = transferComplexSocket.Socket.Receive(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 							                                                    this.Encoding);
 							rawListing = ftpReply.Messages;
 						}
@@ -256,19 +248,21 @@ namespace sharpLightFtp
 
 				using (transferComplexSocket)
 				{
-					var ftpReply = this.Execute(controlComplexSocket,
-					                            () => transferComplexSocket.Connect(this.ConnectTimeout),
-					                            "STOR {0}",
-					                            ftpFile.Name);
-					if (!ftpReply.Success)
 					{
-						return false;
+						var ftpReply = this.Execute(controlComplexSocket,
+						                            () => transferComplexSocket.Connect(this.ConnectTimeout),
+						                            "STOR {0}",
+						                            ftpFile.Name);
+						var success = ftpReply.Success;
+						if (!success)
+						{
+							return false;
+						}
 					}
 
 					{
-						// sending content via transfer socket
-						var success = transferComplexSocket.Send(stream,
-						                                         this.SendTimeout);
+						var success = transferComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
+						                                                stream);
 						if (!success)
 						{
 							return false;
@@ -282,6 +276,66 @@ namespace sharpLightFtp
 					var success = ftpReply.Success;
 
 					return success;
+				}
+			}
+		}
+
+		public bool Download(FtpFile ftpFile,
+		                     Stream stream)
+		{
+			lock (this._lockControlComplexSocket)
+			{
+				var controlComplexSocket = this.EnsureConnectionAndAuthenticationWithoutLock();
+				if (controlComplexSocket == null)
+				{
+					return false;
+				}
+
+				{
+					var success = this.GotoDirectory(controlComplexSocket,
+					                                 ftpFile,
+					                                 false);
+					if (!success)
+					{
+						return false;
+					}
+				}
+
+				var transferComplexSocket = this.GetPassiveComplexSocket(controlComplexSocket);
+				if (transferComplexSocket == null)
+				{
+					return false;
+				}
+
+				using (transferComplexSocket)
+				{
+					{
+						var ftpReply = this.Execute(controlComplexSocket,
+						                            () => transferComplexSocket.Connect(this.ConnectTimeout),
+						                            "RETR {0}",
+						                            ftpFile.Name);
+						if (!ftpReply.Success)
+						{
+							return false;
+						}
+					}
+
+					{
+						var success = transferComplexSocket.Socket.ReceiveIntoStream(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+						                                                             stream);
+						if (!success)
+						{
+							return false;
+						}
+					}
+
+					{
+						var ftpReply = controlComplexSocket.GetFinalFtpReply(this.Encoding,
+						                                                     this.ReceiveTimeout);
+						var success = ftpReply.Success;
+
+						return success;
+					}
 				}
 			}
 		}
@@ -331,28 +385,37 @@ namespace sharpLightFtp
 					return FtpReply.FailedFtpReply;
 				}
 
-				return this.Execute(controlComplexSocket,
-				                    null,
-				                    command,
-				                    args);
+				var ftpReply = this.Execute(controlComplexSocket,
+				                            null,
+				                            command,
+				                            args);
+				return ftpReply;
 			}
 		}
 
-		private FtpReply Execute(ComplexSocket complexSocket,
+		private FtpReply Execute(ComplexSocket controlComplexSocket,
 		                         Func<bool> interimPredicate,
 		                         string command,
 		                         params object[] args)
 		{
 			command = string.Format(command,
 			                        args);
+			if (!command.EndsWith(Environment.NewLine))
+			{
+				command = string.Concat(command,
+				                        Environment.NewLine);
+			}
 
 			{
-				var success = complexSocket.Send(command,
-				                                 this.Encoding,
-				                                 this.SendTimeout);
-				if (!success)
+				var buffer = this.Encoding.GetBytes(command);
+				using (var memoryStream = new MemoryStream(buffer))
 				{
-					return FtpReply.FailedFtpReply;
+					var success = controlComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
+					                                               memoryStream);
+					if (!success)
+					{
+						return FtpReply.FailedFtpReply;
+					}
 				}
 			}
 			if (interimPredicate != null)
@@ -363,10 +426,9 @@ namespace sharpLightFtp
 					return FtpReply.FailedFtpReply;
 				}
 			}
-			using (var socketAsyncEventArgs = complexSocket.GetSocketAsyncEventArgs(this.ReceiveTimeout))
 			{
-				var ftpReply = complexSocket.Socket.Receive(socketAsyncEventArgs,
-				                                            this.Encoding);
+				var ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+				                                                   this.Encoding);
 				return ftpReply;
 			}
 		}
@@ -453,14 +515,11 @@ namespace sharpLightFtp
 				}
 				else
 				{
-					using (var socketAsyncEventArgs = controlComplexSocket.GetSocketAsyncEventArgs(this.ReceiveTimeout))
+					var ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+					                                                   this.Encoding);
+					if (!ftpReply.Success)
 					{
-						var ftpReply = controlComplexSocket.Socket.Receive(socketAsyncEventArgs,
-						                                                   this.Encoding);
-						if (!ftpReply.Success)
-						{
-							controlComplexSocket = null;
-						}
+						controlComplexSocket = null;
 					}
 				}
 			}
@@ -481,27 +540,12 @@ namespace sharpLightFtp
 			                            null,
 			                            "USER {0}",
 			                            this.Username);
-			if (!ftpReply.Success)
-			{
-				var message = string.Format("Could not authenticate with USER '{0}'",
-				                            this.Username);
-				var ftpAuthenticationFailedEventArgs = new FtpAuthenticationFailedEventArgs(message);
-				this.RaiseFtpCommandFailedAsync(ftpAuthenticationFailedEventArgs);
-			}
-			else if (ftpReply.FtpResponseType == FtpResponseType.PositiveIntermediate)
+			if (ftpReply.FtpResponseType == FtpResponseType.PositiveIntermediate)
 			{
 				ftpReply = this.Execute(this._controlComplexSocket,
 				                        null,
 				                        "PASS {0}",
 				                        this.Password);
-				if (!ftpReply.Success)
-				{
-					var message = string.Format("Could not authenticate with USER '{0}' and PASS '{1}'",
-					                            this.Username,
-					                            this.Password);
-					var ftpAuthenticationFailedEventArgs = new FtpAuthenticationFailedEventArgs(message);
-					this.RaiseFtpCommandFailedAsync(ftpAuthenticationFailedEventArgs);
-				}
 			}
 
 			this._authenticated = ftpReply.Success;

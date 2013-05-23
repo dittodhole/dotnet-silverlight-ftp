@@ -68,9 +68,8 @@ namespace sharpLightFtp
 					case FtpResponseType.PositiveCompletion:
 					case FtpResponseType.PositivePreliminary:
 						return true;
-					default:
-						return false;
 				}
+				return false;
 			}
 		}
 	}

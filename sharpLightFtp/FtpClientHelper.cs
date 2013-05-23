@@ -53,13 +53,13 @@ namespace sharpLightFtp
 			return ftpFeatures;
 		}
 
-		public static IPAddress ParseIPAddress(IEnumerable<string> octets )
+		public static IPAddress ParseIPAddress(IEnumerable<string> octets)
 		{
 			var address = (from octet in octets
-			                 let b = byte.Parse(octet)
-			                 select b);
+			               let b = byte.Parse(octet)
+			               select b);
 			var ipAddress = new IPAddress(address.ToArray());
-			
+
 			return ipAddress;
 		}
 
