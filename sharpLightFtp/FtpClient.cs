@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using sharpLightFtp.EventArgs;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
@@ -118,6 +119,9 @@ namespace sharpLightFtp
 				controlComplexSocket.Dispose();
 			}
 		}
+
+		public event EventHandler<SocketRequestEventArg> SocketRequest;
+		public event EventHandler<SocketResponseEventArg> SocketResponse;
 
 		public IEnumerable<FtpListItem> GetListing(string path)
 		{
@@ -490,6 +494,26 @@ namespace sharpLightFtp
 			return true;
 		}
 
+		private void RaiseSocketRequest(SocketRequestEventArg e)
+		{
+			var handler = this.SocketRequest;
+			if (handler != null)
+			{
+				handler.Invoke(this,
+				               e);
+			}
+		}
+
+		private void RaiseSocketResponse(SocketResponseEventArg e)
+		{
+			var handler = this.SocketResponse;
+			if (handler != null)
+			{
+				handler.Invoke(this,
+				               e);
+			}
+		}
+
 		#region ensuring connection and authentication
 
 		private ComplexSocket EnsureConnectionAndAuthenticationWithoutLock()
@@ -577,7 +601,10 @@ namespace sharpLightFtp
 				                        Environment.NewLine);
 			}
 
-			// TODO add loggin for issue #2
+			{
+				var socketRequestEventArg = new SocketRequestEventArg(command);
+				this.RaiseSocketRequest(socketRequestEventArg);
+			}
 
 			{
 				var buffer = this.Encoding.GetBytes(command);
@@ -597,7 +624,10 @@ namespace sharpLightFtp
 			var ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 			                                                   this.Encoding);
 
-			// TODO add logging for issue #2
+			{
+				var socketResponseEventArg = new SocketResponseEventArg(ftpReply.Data);
+				this.RaiseSocketResponse(socketResponseEventArg);
+			}
 
 			return ftpReply;
 		}

@@ -86,6 +86,8 @@
     <Reference Include="System.Windows.Browser" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EventArgs\SocketRequestEventArg.cs" />
+    <Compile Include="EventArgs\SocketResponseEventArg.cs" />
     <Compile Include="Extensions\SocketExtensions.cs" />
     <Compile Include="FtpReply.cs" />
     <Compile Include="ComplexSocket.cs" />
