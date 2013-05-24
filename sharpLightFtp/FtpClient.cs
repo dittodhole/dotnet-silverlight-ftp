@@ -122,6 +122,8 @@ namespace sharpLightFtp
 
 		public event EventHandler<SocketRequestEventArg> SocketRequest;
 		public event EventHandler<SocketResponseEventArg> SocketResponse;
+		public event EventHandler<UploadProgressEventArgs> UploadProgress;
+		public event EventHandler<DownloadProgressEventArgs> DownloadProgress;
 
 		public IEnumerable<FtpListItem> GetListing(string path)
 		{
@@ -283,7 +285,14 @@ namespace sharpLightFtp
 					{
 						// sending transfer socket
 						var success = transferComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
-						                                                stream);
+						                                                stream,
+						                                                (bytesSent,
+						                                                 bytesTotal) =>
+						                                                {
+							                                                var uploadProgressEventArgs = new UploadProgressEventArgs(bytesSent,
+							                                                                                                          bytesTotal);
+							                                                this.OnUploadProgress(uploadProgressEventArgs);
+						                                                });
 						if (!success)
 						{
 							return false;
@@ -323,6 +332,26 @@ namespace sharpLightFtp
 					}
 				}
 
+				long bytesTotal;
+
+				// sending SIZE
+				// reading SIZE
+				{
+					var ftpReply = this.Execute(controlComplexSocket,
+					                            "SIZE {0}",
+					                            ftpFile.Name);
+					if (!ftpReply.Success)
+					{
+						return false;
+					}
+
+					if (!long.TryParse(ftpReply.ResponseMessage,
+					                   out bytesTotal))
+					{
+						return false;
+					}
+				}
+
 				// sending PASV
 				// reading PASV
 				var transferComplexSocket = this.GetPassiveComplexSocket(controlComplexSocket);
@@ -331,40 +360,48 @@ namespace sharpLightFtp
 					return false;
 				}
 
-				FtpReply ftpReply;
-
-				using (transferComplexSocket)
 				{
-					// sending RETR
-					// open transfer socket
-					// reading RETR (150 Opening BINARY mode data connection...)
-					ftpReply = this.Execute(controlComplexSocket,
-					                        () => transferComplexSocket.Connect(this.ConnectTimeout),
-					                        "RETR {0}",
-					                        ftpFile.Name);
-					if (!ftpReply.Success)
-					{
-						return false;
-					}
+					FtpReply ftpReply;
 
+					using (transferComplexSocket)
 					{
-						this.WaitBeforeReceive();
-
-						// reading transfer socket
-						var success = transferComplexSocket.Socket.ReceiveIntoStream(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
-						                                                             stream);
-						if (!success)
+						// sending RETR
+						// open transfer socket
+						// reading RETR (150 Opening BINARY mode data connection...)
+						ftpReply = this.Execute(controlComplexSocket,
+						                        () => transferComplexSocket.Connect(this.ConnectTimeout),
+						                        "RETR {0}",
+						                        ftpFile.Name);
+						if (!ftpReply.Success)
 						{
 							return false;
 						}
-					}
-				}
 
-				// reading RETR (226 Transfer complete)
-				if (!this.AlreadyCompletedOrFinalFtpReplySuccess(controlComplexSocket,
-				                                                 ftpReply))
-				{
-					return false;
+						{
+							this.WaitBeforeReceive();
+
+							// reading transfer socket
+							var success = transferComplexSocket.Socket.ReceiveIntoStream(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+							                                                             stream,
+							                                                             (bytesReceived) =>
+							                                                             {
+								                                                             var downloadProgressEventArgs = new DownloadProgressEventArgs(bytesReceived,
+								                                                                                                                           bytesTotal);
+								                                                             this.OnDownloadProgress(downloadProgressEventArgs);
+							                                                             });
+							if (!success)
+							{
+								return false;
+							}
+						}
+					}
+
+					// reading RETR (226 Transfer complete)
+					if (!this.AlreadyCompletedOrFinalFtpReplySuccess(controlComplexSocket,
+					                                                 ftpReply))
+					{
+						return false;
+					}
 				}
 			}
 
@@ -494,7 +531,7 @@ namespace sharpLightFtp
 			return true;
 		}
 
-		private void RaiseSocketRequest(SocketRequestEventArg e)
+		private void OnSocketRequest(SocketRequestEventArg e)
 		{
 			var handler = this.SocketRequest;
 			if (handler != null)
@@ -504,9 +541,29 @@ namespace sharpLightFtp
 			}
 		}
 
-		private void RaiseSocketResponse(SocketResponseEventArg e)
+		private void OnSocketResponse(SocketResponseEventArg e)
 		{
 			var handler = this.SocketResponse;
+			if (handler != null)
+			{
+				handler.Invoke(this,
+				               e);
+			}
+		}
+
+		private void OnUploadProgress(UploadProgressEventArgs e)
+		{
+			var handler = this.UploadProgress;
+			if (handler != null)
+			{
+				handler.Invoke(this,
+				               e);
+			}
+		}
+
+		private void OnDownloadProgress(DownloadProgressEventArgs e)
+		{
+			var handler = this.DownloadProgress;
 			if (handler != null)
 			{
 				handler.Invoke(this,
@@ -603,7 +660,7 @@ namespace sharpLightFtp
 
 			{
 				var socketRequestEventArg = new SocketRequestEventArg(command);
-				this.RaiseSocketRequest(socketRequestEventArg);
+				this.OnSocketRequest(socketRequestEventArg);
 			}
 
 			{
@@ -626,7 +683,7 @@ namespace sharpLightFtp
 
 			{
 				var socketResponseEventArg = new SocketResponseEventArg(ftpReply.Data);
-				this.RaiseSocketResponse(socketResponseEventArg);
+				this.OnSocketResponse(socketResponseEventArg);
 			}
 
 			return ftpReply;

@@ -4,7 +4,7 @@
 	{
 		private readonly string _text;
 
-		public SocketRequestEventArg(string text)
+		internal SocketRequestEventArg(string text)
 		{
 			this._text = text;
 		}
