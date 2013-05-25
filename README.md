@@ -15,3 +15,7 @@ sharpLightFtp is licenced under WTFPL (http://www.wtfpl.net/), but it would be n
 Unit Tests
 =============
 In order to run unit tests you'll need to install AgUnit (https://agunit.codeplex.com/) and Silverlight 5 Toolkit (https://silverlight.codeplex.com/releases/view/78435)
+
+ReSharper
+=============
+By 2013-05-24 JetBrains issued an open-source licence for ReSharper to this project. This is a very valuable support!
