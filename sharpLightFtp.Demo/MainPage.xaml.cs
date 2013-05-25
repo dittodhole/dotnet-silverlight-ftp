@@ -52,16 +52,23 @@ namespace sharpLightFtp.Demo
 					long size;
 					using (var memoryStream = new MemoryStream())
 					{
-						var ftpFile = new FtpFile("README");
-						var success = ftpClient.Download(ftpFile,
-						                                 memoryStream);
-						if (!success)
 						{
-							size = -1;
+							var ftpFile = new FtpFile("/pub/mozilla/nightly/README");
+							var success = ftpClient.Download(ftpFile,
+							                                 memoryStream);
+							if (!success)
+							{
+								size = -1;
+							}
+							else
+							{
+								size = memoryStream.Length;
+							}
 						}
-						else
 						{
-							size = memoryStream.Length;
+							var ftpFile = new FtpFile("/pub/README");
+							var success = ftpClient.Download(ftpFile,
+							                                 memoryStream);
 						}
 					}
 

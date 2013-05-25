@@ -18,7 +18,7 @@ namespace sharpLightFtp
 
 		private bool _authenticated;
 		private ComplexSocket _controlComplexSocket;
-		private FtpDirectory _currentFtpDirectory = FtpDirectory.Root;
+		private FtpDirectory _currentFtpDirectory = FtpDirectory.Root; // TODO we could also determine if PWD is allowed or if we need to persist the current directory TODO: how to check for manual CWD commands
 
 		public FtpClient(string username,
 		                 string password,
@@ -562,6 +562,8 @@ namespace sharpLightFtp
 		{
 			var ftpDirectories = ftpFileSystemObject.GetHierarchy()
 			                                        .Reverse();
+
+			// INFO to get up, use CDUP
 
 			// TODO do a diff between this._currentFtpDirectory and ftpFileSystemObject.ParentDirectory
 
