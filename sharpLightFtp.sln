@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sharpLightFtp.NuGetPackage"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{98EF6BA9-CA65-4187-8A23-6DF0493C9366}"
 	ProjectSection(SolutionItems) = preProject
+		ClientAccessPolicy.xml = ClientAccessPolicy.xml
+		licence.txt = licence.txt
 		README.md = README.md
 	EndProjectSection
 EndProject
