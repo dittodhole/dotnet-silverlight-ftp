@@ -229,9 +229,9 @@ namespace sharpLightFtp
 				}
 
 				var ftpDirectory = new FtpDirectory(path);
-				var success = this.GotoDirectory(controlComplexSocket,
-				                                 ftpDirectory,
-				                                 true);
+				var success = this.GotoParentDirectory(controlComplexSocket,
+				                                       ftpDirectory,
+				                                       true);
 
 				return success;
 			}
@@ -250,9 +250,9 @@ namespace sharpLightFtp
 				}
 
 				{
-					var success = this.GotoDirectory(controlComplexSocket,
-					                                 ftpFile,
-					                                 createDirectoryIfNotExists);
+					var success = this.GotoParentDirectory(controlComplexSocket,
+					                                       ftpFile,
+					                                       createDirectoryIfNotExists);
 					if (!success)
 					{
 						return false;
@@ -323,9 +323,9 @@ namespace sharpLightFtp
 				}
 
 				{
-					var success = this.GotoDirectory(controlComplexSocket,
-					                                 ftpFile,
-					                                 false);
+					var success = this.GotoParentDirectory(controlComplexSocket,
+					                                       ftpFile,
+					                                       false);
 					if (!success)
 					{
 						return false;
@@ -402,6 +402,66 @@ namespace sharpLightFtp
 					{
 						return false;
 					}
+				}
+			}
+
+			return true;
+		}
+
+		public bool Delete(FtpFile ftpFile)
+		{
+			lock (this._lockControlComplexSocket)
+			{
+				var controlComplexSocket = this.EnsureConnectionAndAuthenticationWithoutLock();
+				if (controlComplexSocket == null)
+				{
+					return false;
+				}
+
+				var success = this.GotoParentDirectory(controlComplexSocket,
+				                                       ftpFile,
+				                                       false);
+				if (!success)
+				{
+					return false;
+				}
+
+				var ftpReply = this.Execute(controlComplexSocket,
+				                            "DELE {0}",
+				                            ftpFile.Name);
+				if (!ftpReply.Success)
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public bool Delete(FtpDirectory ftpDirectory)
+		{
+			lock (this._lockControlComplexSocket)
+			{
+				var controlComplexSocket = this.EnsureConnectionAndAuthenticationWithoutLock();
+				if (controlComplexSocket == null)
+				{
+					return false;
+				}
+
+				var success = this.GotoParentDirectory(controlComplexSocket,
+				                                       ftpDirectory,
+				                                       false);
+				if (!success)
+				{
+					return false;
+				}
+
+				var ftpReply = this.Execute(controlComplexSocket,
+				                            "RMD {0}",
+				                            ftpDirectory.Name);
+				if (!ftpReply.Success)
+				{
+					return false;
 				}
 			}
 
@@ -485,9 +545,15 @@ namespace sharpLightFtp
 			}
 		}
 
-		private bool GotoDirectory(ComplexSocket controlComplexSocket,
-		                           FtpFileSystemObject ftpFileSystemObject,
-		                           bool createDirectoryIfNotExists)
+		/// <remarks>
+		///     When <paramref name="ftpFileSystemObject" /> is a <type name="FtpDirectory" /> this command will go to the parent directory, not the directory itself
+		/// </remarks>
+		/// <remarks>
+		///     When <paramref name="ftpFileSystemObject" /> is a <type name="FtpFile" /> this command will got to the containing directory
+		/// </remarks>
+		private bool GotoParentDirectory(ComplexSocket controlComplexSocket,
+		                                 FtpFileSystemObject ftpFileSystemObject,
+		                                 bool createDirectoryIfNotExists)
 		{
 			// TODO it would be better if we check the current DIR to then switch to the target, for now I assume that we are in /
 
