@@ -6,7 +6,7 @@ namespace sharpLightFtp.Extensions
 	{
 		internal static IEnumerable<FtpDirectory> GetHierarchy(this FtpFileSystemObject ftpFileSystemObject)
 		{
-			var current = ftpFileSystemObject.ParentDirectory;
+			var current = ftpFileSystemObject.GetParentDirectory();
 			if (current == null)
 			{
 				yield break;
@@ -14,7 +14,7 @@ namespace sharpLightFtp.Extensions
 			do
 			{
 				yield return current;
-			} while ((current = current.ParentDirectory) != null);
+			} while ((current = current.GetParentDirectory()) != null);
 		}
 	}
 }

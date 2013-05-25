@@ -15,26 +15,6 @@ namespace sharpLightFtp
 			this._fullName = path;
 		}
 
-		public FtpDirectory ParentDirectory
-		{
-			get
-			{
-				var path = this.GetDirectoryName();
-				if (string.IsNullOrWhiteSpace(path))
-				{
-					return null;
-				}
-				if (string.Equals(path,
-				                  "\\"))
-				{
-					return null;
-				}
-				var ftpDirectory = new FtpDirectory(path);
-
-				return ftpDirectory;
-			}
-		}
-
 		public string Name
 		{
 			get
@@ -48,10 +28,25 @@ namespace sharpLightFtp
 			}
 		}
 
+		public FtpDirectory GetParentDirectory()
+		{
+			var path = this.GetDirectoryName();
+			if (string.IsNullOrWhiteSpace(path))
+			{
+				return null;
+			}
+			if (string.Equals(path,
+			                  "\\"))
+			{
+				return null;
+			}
+			var ftpDirectory = new FtpDirectory(path);
+
+			return ftpDirectory;
+		}
+
 		private string GetDirectoryName()
 		{
-			Contract.Requires(!string.IsNullOrWhiteSpace(this._fullName));
-
 			if (string.Equals(this._fullName,
 			                  "/"))
 			{
@@ -62,12 +57,10 @@ namespace sharpLightFtp
 
 		private string GetFileName()
 		{
-			Contract.Requires(!string.IsNullOrWhiteSpace(this._fullName));
-
 			return Path.GetFileName(this._fullName);
 		}
 
-		protected virtual string CleanPath(string path)
+		protected string CleanPath(string path)
 		{
 			var firstClean = path.Replace('\\',
 			                              '/');

@@ -18,6 +18,7 @@ namespace sharpLightFtp
 
 		private bool _authenticated;
 		private ComplexSocket _controlComplexSocket;
+		private FtpDirectory _currentFtpDirectory = FtpDirectory.Root;
 
 		public FtpClient(string username,
 		                 string password,
@@ -151,7 +152,6 @@ namespace sharpLightFtp
 				}
 				else
 				{
-					// TODO check if really *always* available
 					ftpListType = FtpListType.LIST;
 					command = "LIST";
 				}
@@ -468,6 +468,11 @@ namespace sharpLightFtp
 			return true;
 		}
 
+		public FtpDirectory GetCurrentFtpDirectory()
+		{
+			return this._currentFtpDirectory;
+		}
+
 		private ComplexSocket GetPassiveComplexSocket(ComplexSocket controlComplexSocket)
 		{
 			var ftpReply = this.Execute(controlComplexSocket,
@@ -555,14 +560,14 @@ namespace sharpLightFtp
 		                                 FtpFileSystemObject ftpFileSystemObject,
 		                                 bool createDirectoryIfNotExists)
 		{
-			// TODO it would be better if we check the current DIR to then switch to the target, for now I assume that we are in /
+			var ftpDirectories = ftpFileSystemObject.GetHierarchy()
+			                                        .Reverse();
 
-			var hierarchy = ftpFileSystemObject.GetHierarchy()
-			                                   .Reverse();
+			// TODO do a diff between this._currentFtpDirectory and ftpFileSystemObject.ParentDirectory
 
-			foreach (var element in hierarchy)
+			foreach (var ftpDirectory in ftpDirectories)
 			{
-				var name = element.Name;
+				var name = ftpDirectory.Name;
 				var ftpReply = this.Execute(controlComplexSocket,
 				                            "CWD {0}",
 				                            name);
@@ -589,6 +594,7 @@ namespace sharpLightFtp
 						}
 						goto case FtpResponseType.PositiveCompletion;
 					case FtpResponseType.PositiveCompletion:
+						this._currentFtpDirectory = ftpDirectory;
 						continue;
 					default:
 						return false;
@@ -712,6 +718,9 @@ namespace sharpLightFtp
 
 		#region communcation helpers
 
+		/// <remarks>
+		///     This code does sending specifically for the <paramref name="controlComplexSocket" /> and does some logging
+		/// </remarks>
 		private bool WrappedControlSocketSend(ComplexSocket controlComplexSocket,
 		                                      string command,
 		                                      params object[] args)
@@ -740,6 +749,9 @@ namespace sharpLightFtp
 			}
 		}
 
+		/// <remarks>
+		///     This code does receiving specifically for the <paramref name="controlComplexSocket" /> and does some logging
+		/// </remarks>
 		private FtpReply WrappedControlSocketReceive(ComplexSocket controlComplexSocket)
 		{
 			this.WaitBeforeReceive();
@@ -755,9 +767,9 @@ namespace sharpLightFtp
 			return ftpReply;
 		}
 
+		/// <remarks>This is only needed in some specific scenarios - using code should know about - see issue #6</remarks>
 		private void WaitBeforeReceive()
 		{
-			// issue #6
 			var waitBetweenSendAndReceive = this.WaitBeforeReceiveTimeSpan;
 			if (waitBetweenSendAndReceive > TimeSpan.Zero)
 			{
@@ -765,11 +777,12 @@ namespace sharpLightFtp
 			}
 		}
 
+		/// <remarks>
+		///     Sometimes <paramref name="ftpReply" /> has 2 lines or more with different <type name="FtpResponseType" />
+		/// </remarks>
 		private bool AlreadyCompletedOrFinalFtpReplySuccess(ComplexSocket controlComplexSocket,
 		                                                    FtpReply ftpReply)
 		{
-			// TODO check if *really* necessary - sometimes previous ftpReply has 2 lines or more with different FtpResponseTypes
-
 			if (ftpReply.Completed)
 			{
 				return true;

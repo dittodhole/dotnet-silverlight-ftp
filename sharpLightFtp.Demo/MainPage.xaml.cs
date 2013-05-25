@@ -48,6 +48,7 @@ namespace sharpLightFtp.Demo
 			{
 				using (ftpClient)
 				{
+					var foo = ftpClient.GetCurrentFtpDirectory();
 					long size;
 					using (var memoryStream = new MemoryStream())
 					{
