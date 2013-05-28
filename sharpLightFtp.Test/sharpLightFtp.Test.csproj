@@ -82,6 +82,7 @@
   <ItemGroup>
     <Compile Include="FtpClientHelperTests.cs" />
     <Compile Include="FtpClientTest.cs" />
+    <Compile Include="FtpDirectoryTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

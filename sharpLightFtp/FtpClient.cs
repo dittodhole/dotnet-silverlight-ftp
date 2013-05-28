@@ -233,7 +233,7 @@ namespace sharpLightFtp
 					return false;
 				}
 
-				var ftpDirectory = new FtpDirectory(path);
+				var ftpDirectory = FtpDirectory.Create(path);
 				var success = this.GotoParentDirectory(controlComplexSocket,
 				                                       ftpDirectory,
 				                                       true);
@@ -281,7 +281,7 @@ namespace sharpLightFtp
 					ftpReply = this.Execute(controlComplexSocket,
 					                        () => transferComplexSocket.Connect(this.ConnectTimeout),
 					                        "STOR {0}",
-					                        ftpFile.Name);
+					                        ftpFile.FileName);
 					if (!ftpReply.Success)
 					{
 						return false;
@@ -345,7 +345,7 @@ namespace sharpLightFtp
 				{
 					var ftpReply = this.Execute(controlComplexSocket,
 					                            "SIZE {0}",
-					                            ftpFile.Name);
+					                            ftpFile.FileName);
 					if (!ftpReply.Success)
 					{
 						return false;
@@ -377,7 +377,7 @@ namespace sharpLightFtp
 						ftpReply = this.Execute(controlComplexSocket,
 						                        () => transferComplexSocket.Connect(this.ConnectTimeout),
 						                        "RETR {0}",
-						                        ftpFile.Name);
+						                        ftpFile.FileName);
 						if (!ftpReply.Success)
 						{
 							return false;
@@ -435,7 +435,7 @@ namespace sharpLightFtp
 
 				var ftpReply = this.Execute(controlComplexSocket,
 				                            "DELE {0}",
-				                            ftpFile.Name);
+				                            ftpFile.FileName);
 				if (!ftpReply.Success)
 				{
 					return false;
@@ -465,7 +465,7 @@ namespace sharpLightFtp
 
 				var ftpReply = this.Execute(controlComplexSocket,
 				                            "RMD {0}",
-				                            ftpDirectory.Name);
+				                            ftpDirectory.DirectoryName);
 				if (!ftpReply.Success)
 				{
 					return false;
@@ -567,46 +567,51 @@ namespace sharpLightFtp
 		                                 FtpFileSystemObject ftpFileSystemObject,
 		                                 bool createDirectoryIfNotExists)
 		{
-			var ftpDirectories = ftpFileSystemObject.GetHierarchy()
-			                                        .Reverse();
+			var ftpDirectory = ftpFileSystemObject.GetParentFtpDirectory();
+			var directoryChanges = FtpClientHelper.DirectoryChanges(this._currentFtpDirectory,
+			                                                        ftpDirectory);
 
-			// INFO to get up, use CDUP
-
-			// TODO do a diff between this._currentFtpDirectory and ftpFileSystemObject.ParentDirectory
-
-			foreach (var ftpDirectory in ftpDirectories)
+			foreach (var directoryChange in directoryChanges)
 			{
-				var name = ftpDirectory.Name;
-				var ftpReply = this.Execute(controlComplexSocket,
-				                            "CWD {0}",
-				                            name);
-				if (!ftpReply.Success)
+				if (string.Equals(directoryChange,
+				                  FtpFileSystemObject.ParentChangeCommand))
 				{
-					return false;
+					var ftpReply = this.Execute(controlComplexSocket,
+					                            "CDUP");
+					if (ftpReply.Success)
+					{
+						this._currentFtpDirectory = this._currentFtpDirectory.GetParentFtpDirectory();
+					}
 				}
-
-				switch (ftpReply.FtpResponseType)
+				else
 				{
-					case FtpResponseType.PermanentNegativeCompletion:
-						// TODO some parsing of the actual FtpReply.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
-						if (!createDirectoryIfNotExists)
-						{
+					var ftpReply = this.Execute(controlComplexSocket,
+					                            "CWD {0}",
+					                            directoryChange);
+					switch (ftpReply.FtpResponseType)
+					{
+						case FtpResponseType.PermanentNegativeCompletion:
+							// TODO some parsing of the actual FtpReply.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
+							if (!createDirectoryIfNotExists)
+							{
+								return false;
+							}
+							ftpReply = this.Execute(controlComplexSocket,
+							                        "MKD {0}",
+							                        directoryChange);
+							var success = ftpReply.Success;
+							if (!success)
+							{
+								return false;
+							}
+							goto case FtpResponseType.PositiveCompletion;
+						case FtpResponseType.PositiveCompletion:
+							this._currentFtpDirectory = FtpDirectory.Create(this._currentFtpDirectory,
+							                                                directoryChange);
+							continue;
+						default:
 							return false;
-						}
-						ftpReply = this.Execute(controlComplexSocket,
-						                        "MKD {0}",
-						                        name);
-						var success = ftpReply.Success;
-						if (!success)
-						{
-							return false;
-						}
-						goto case FtpResponseType.PositiveCompletion;
-					case FtpResponseType.PositiveCompletion:
-						this._currentFtpDirectory = ftpDirectory;
-						continue;
-					default:
-						return false;
+					}
 				}
 			}
 			return true;

@@ -1,20 +1,26 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace sharpLightFtp.Extensions
 {
-	internal static class FtpFileSystemObjectExtensions
+	public static class FtpFileSystemObjectExtensions
 	{
-		internal static IEnumerable<FtpDirectory> GetHierarchy(this FtpFileSystemObject ftpFileSystemObject)
+		public static IEnumerable<string> GetHierarchy(this FtpDirectory ftpDirectory)
 		{
-			var current = ftpFileSystemObject.GetParentDirectory();
-			if (current == null)
+			var fullName = ftpDirectory.FullName;
+			if (string.IsNullOrEmpty(fullName))
 			{
-				yield break;
+				return Enumerable.Empty<string>();
 			}
-			do
+			var directories = fullName.Split(new[]
 			{
-				yield return current;
-			} while ((current = current.GetParentDirectory()) != null);
+				Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar
+			},
+			                                 StringSplitOptions.RemoveEmptyEntries);
+
+			return directories;
 		}
 	}
 }

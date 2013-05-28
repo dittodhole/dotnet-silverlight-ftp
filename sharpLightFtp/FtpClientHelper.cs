@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
+using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
@@ -163,6 +164,43 @@ namespace sharpLightFtp
 			                                port);
 
 			return ipEndPoint;
+		}
+
+		public static IEnumerable<string> DirectoryChanges(FtpDirectory sourceFtpDirectory,
+		                                                   FtpDirectory targetFtpDirectory)
+		{
+			var sourceHierarchy = sourceFtpDirectory.GetHierarchy()
+			                                        .ToList();
+			var targetHierarchy = targetFtpDirectory.GetHierarchy()
+			                                        .ToList();
+
+			var wereEqualBefore = true;
+			var i = 0;
+			var levelOfEqual = 0;
+			for (; i < sourceHierarchy.Count; i++)
+			{
+				var sourceDirectory = sourceHierarchy.ElementAt(i);
+				var targetDirectory = targetHierarchy.ElementAtOrDefault(i);
+
+				if (wereEqualBefore)
+				{
+					if (!string.Equals(sourceDirectory,
+					                   targetDirectory))
+					{
+						levelOfEqual = i;
+						wereEqualBefore = false;
+					}
+				}
+				if (!wereEqualBefore)
+				{
+					yield return FtpFileSystemObject.ParentChangeCommand;
+				}
+			}
+
+			foreach (var directory in targetHierarchy.Skip(levelOfEqual))
+			{
+				yield return directory;
+			}
 		}
 	}
 }

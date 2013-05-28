@@ -49,5 +49,61 @@ namespace sharpLightFtp.Test
 			var ipEndPoint = FtpClientHelper.ParseIPEndPoint(ftpReply);
 			Assert.IsNotNull(ipEndPoint);
 		}
+
+		[TestMethod]
+		public void TestDirectoryChanges1()
+		{
+			var sourceFtpDirectory = FtpDirectory.Create("/foo/foo1");
+			var targetFtpDirectory = FtpDirectory.Create("/foo/foo2");
+			var directoryChanges = FtpClientHelper.DirectoryChanges(sourceFtpDirectory,
+			                                                        targetFtpDirectory);
+
+			var joinedDirectoryChanges = string.Join(",",
+			                                         directoryChanges);
+			Assert.AreEqual("..,foo2",
+			                joinedDirectoryChanges);
+		}
+
+		[TestMethod]
+		public void TestDirectoryChanges2()
+		{
+			var sourceFtpDirectory = FtpDirectory.Create("/foo/foo1/foo2");
+			var targetFtpDirectory = FtpDirectory.Create("/foo/foo2");
+			var directoryChanges = FtpClientHelper.DirectoryChanges(sourceFtpDirectory,
+			                                                        targetFtpDirectory);
+
+			var joinedDirectoryChanges = string.Join(",",
+			                                         directoryChanges);
+			Assert.AreEqual("..,..,foo2",
+			                joinedDirectoryChanges);
+		}
+
+		[TestMethod]
+		public void TestDirectoryChanges3()
+		{
+			var sourceFtpDirectory = FtpDirectory.Create("/foo/foo1");
+			var targetFtpDirectory = FtpDirectory.Create("/foo/foo2/foo3");
+			var directoryChanges = FtpClientHelper.DirectoryChanges(sourceFtpDirectory,
+			                                                        targetFtpDirectory);
+
+			var joinedDirectoryChanges = string.Join(",",
+			                                         directoryChanges);
+			Assert.AreEqual("..,foo2,foo3",
+			                joinedDirectoryChanges);
+		}
+
+		[TestMethod]
+		public void TestDirectoryChanges4()
+		{
+			var sourceFtpDirectory = FtpDirectory.Create("/foo/foo1");
+			var targetFtpDirectory = FtpDirectory.Create("/");
+			var directoryChanges = FtpClientHelper.DirectoryChanges(sourceFtpDirectory,
+			                                                        targetFtpDirectory);
+
+			var joinedDirectoryChanges = string.Join(",",
+			                                         directoryChanges);
+			Assert.AreEqual("..,..",
+			                joinedDirectoryChanges);
+		}
 	}
 }

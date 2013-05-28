@@ -1,10 +1,41 @@
-﻿namespace sharpLightFtp
+﻿using System.IO;
+
+namespace sharpLightFtp
 {
 	public sealed class FtpDirectory : FtpFileSystemObject
 	{
-		internal static readonly FtpDirectory Root = new FtpDirectory("/");
+		public static readonly FtpDirectory Root = new FtpDirectory("/");
 
-		public FtpDirectory(string path)
+		private FtpDirectory(string path)
 			: base(path) {}
+
+		public string DirectoryName
+		{
+			get
+			{
+				var directoryName = this.GetFileName();
+
+				return directoryName;
+			}
+		}
+
+		public static FtpDirectory Create(string path)
+		{
+			var ftpDirectory = new FtpDirectory(path);
+
+			return ftpDirectory;
+		}
+
+		public static FtpDirectory Create(FtpDirectory baseFtpDirectory,
+		                                  string directory)
+		{
+			var fullName = baseFtpDirectory.FullName;
+			var path = Path.Combine(fullName,
+			                        directory);
+
+			var ftpDirectory = Create(path);
+
+			return ftpDirectory;
+		}
 	}
 }

@@ -1,74 +1,61 @@
-﻿using System.Diagnostics.Contracts;
+﻿using System;
 using System.IO;
-using System.Text.RegularExpressions;
 
 namespace sharpLightFtp
 {
 	public abstract class FtpFileSystemObject
 	{
-		private string _fullName;
+		public const string ParentChangeCommand = "..";
+		private readonly string _fullName;
 
 		protected FtpFileSystemObject(string path)
 		{
-			Contract.Requires(!string.IsNullOrWhiteSpace(path));
-
-			this._fullName = path;
+			if (String.IsNullOrEmpty(path))
+			{
+				throw new ArgumentException("path can not be null or empty",
+				                            "path");
+			}
+			if (path.Contains(ParentChangeCommand))
+			{
+				throw new ArgumentException(String.Format("path can not contain '{0}'",
+				                                          ParentChangeCommand),
+				                            "path");
+			}
+			this._fullName = path.TrimEnd(new[]
+			{
+				Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar
+			});
 		}
 
-		public string Name
+		public string FullName
 		{
 			get
 			{
-				return this.GetFileName();
-			}
-			set
-			{
-				this._fullName = Path.Combine(this._fullName ?? string.Empty,
-				                              value);
+				return this._fullName;
 			}
 		}
 
-		public FtpDirectory GetParentDirectory()
+		public FtpDirectory GetParentFtpDirectory()
 		{
-			var path = this.GetDirectoryName();
-			if (string.IsNullOrWhiteSpace(path))
-			{
-				return null;
-			}
-			if (string.Equals(path,
-			                  "\\"))
-			{
-				return null;
-			}
-			var ftpDirectory = new FtpDirectory(path);
+			var containingDirectory = this.GetParentDirectory();
+			var ftpDirectory = FtpDirectory.Create(containingDirectory);
 
 			return ftpDirectory;
 		}
 
-		private string GetDirectoryName()
+		internal string GetParentDirectory()
 		{
-			if (string.Equals(this._fullName,
-			                  "/"))
-			{
-				return null;
-			}
-			return Path.GetDirectoryName(this._fullName);
+			var directoryName = Path.GetDirectoryName(this._fullName);
+			var containingDirectory = directoryName;
+
+			return containingDirectory;
 		}
 
-		private string GetFileName()
+		protected string GetFileName()
 		{
-			return Path.GetFileName(this._fullName);
-		}
+			var fileName = Path.GetFileName(this._fullName);
 
-		protected string CleanPath(string path)
-		{
-			var firstClean = path.Replace('\\',
-			                              '/');
-			var cleanedPath = Regex.Replace(firstClean,
-			                                @"/+",
-			                                "/");
-
-			return cleanedPath;
+			return fileName;
 		}
 	}
 }
