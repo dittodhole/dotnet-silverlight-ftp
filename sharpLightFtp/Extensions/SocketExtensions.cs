@@ -96,7 +96,7 @@ namespace sharpLightFtp.Extensions
 					bytesReceived += bytesTransferred;
 					progressPredicate.Invoke(bytesReceived);
 				}
-			} while (bytesTransferred == bufferSize);
+			} while (bytesTransferred == bufferSize); // TODO I know that there *might* be a chance that this is not valid ...
 
 			return true;
 		}
@@ -136,7 +136,7 @@ namespace sharpLightFtp.Extensions
 						                         bytesTotal);
 					}
 				}
-			} while (bytesRead == bufferSize);
+			} while (bytesRead == bufferSize); // TODO I know that there *might* be a chance that this is not valid ...
 
 			return true;
 		}

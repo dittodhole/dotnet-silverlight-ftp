@@ -63,8 +63,8 @@ namespace sharpLightFtp
 		{
 			this.SocketReceiveBufferSize = 1 << 13; // 8192
 			this.SocketSendBufferSize = 1 << 13; // 8192
-			this.ChunkReceiveBufferSize = 1 << 10; // 1024
-			this.ChunkSendBufferSize = 1 << 10; // 1024
+			this.ChunkReceiveBufferSize = 1400;
+			this.ChunkSendBufferSize = 1400;
 			this.Encoding = Encoding.UTF8;
 			this.ConnectTimeout = TimeSpan.FromSeconds(30);
 			this.ReceiveTimeout = TimeSpan.FromSeconds(30);

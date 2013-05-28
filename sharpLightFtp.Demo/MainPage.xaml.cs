@@ -122,10 +122,7 @@ namespace sharpLightFtp.Demo
 				Server = server,
 				Port = port,
 				Username = username,
-				Password = password,
-				ChunkSendBufferSize = 1 << 5, // 32
-				SocketReceiveBufferSize = 1 << 30, // 1073741824
-				WaitBeforeReceiveTimeSpan = TimeSpan.FromMilliseconds(200)
+				Password = password
 			};
 			return ftpClient;
 		}
