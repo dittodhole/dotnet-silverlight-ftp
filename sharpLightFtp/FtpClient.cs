@@ -160,9 +160,25 @@ namespace sharpLightFtp
 					command = "LIST";
 				}
 
-				var concreteCommand = string.Format("{0} {1}",
-				                                    command,
-				                                    path);
+				var ftpDirectory = FtpDirectory.Create(path);
+
+				{
+					var success = this.GotoParentDirectory(controlComplexSocket,
+					                                       ftpDirectory);
+					if (!success)
+					{
+						return Enumerable.Empty<FtpListItem>();
+					}
+				}
+
+				{
+					var success = this.ChangeWorkingDirectory(controlComplexSocket,
+					                                          ftpDirectory.DirectoryName);
+					if (!success)
+					{
+						return Enumerable.Empty<FtpListItem>();
+					}
+				}
 
 				{
 					// sending PASV
@@ -182,7 +198,7 @@ namespace sharpLightFtp
 						// reading LIST/... (150 Here comes the directory listing)
 						ftpReply = this.Execute(controlComplexSocket,
 						                        () => transferComplexSocket.Connect(this.ConnectTimeout),
-						                        concreteCommand);
+						                        command);
 						if (!ftpReply.Success)
 						{
 							return Enumerable.Empty<FtpListItem>();
@@ -330,8 +346,7 @@ namespace sharpLightFtp
 
 				{
 					var success = this.GotoParentDirectory(controlComplexSocket,
-					                                       ftpFile,
-					                                       false);
+					                                       ftpFile);
 					if (!success)
 					{
 						return false;
@@ -426,8 +441,7 @@ namespace sharpLightFtp
 				}
 
 				var success = this.GotoParentDirectory(controlComplexSocket,
-				                                       ftpFile,
-				                                       false);
+				                                       ftpFile);
 				if (!success)
 				{
 					return false;
@@ -456,8 +470,7 @@ namespace sharpLightFtp
 				}
 
 				var success = this.GotoParentDirectory(controlComplexSocket,
-				                                       ftpDirectory,
-				                                       false);
+				                                       ftpDirectory);
 				if (!success)
 				{
 					return false;
@@ -557,15 +570,9 @@ namespace sharpLightFtp
 			}
 		}
 
-		/// <remarks>
-		///     When <paramref name="ftpFileSystemObject"/> is a <type name="FtpDirectory"/> this command will go to the parent directory, not the directory itself
-		/// </remarks>
-		/// <remarks>
-		///     When <paramref name="ftpFileSystemObject"/> is a <type name="FtpFile"/> this command will got to the containing directory
-		/// </remarks>
 		private bool GotoParentDirectory(ComplexSocket controlComplexSocket,
 		                                 FtpFileSystemObject ftpFileSystemObject,
-		                                 bool createDirectoryIfNotExists)
+		                                 bool createDirectoryIfNotExists = false)
 		{
 			var ftpDirectory = ftpFileSystemObject.GetParentFtpDirectory();
 			var directoryChanges = FtpClientHelper.DirectoryChanges(this._currentFtpDirectory,
@@ -585,34 +592,48 @@ namespace sharpLightFtp
 				}
 				else
 				{
-					var ftpReply = this.Execute(controlComplexSocket,
-					                            "CWD {0}",
-					                            directoryChange);
-					switch (ftpReply.FtpResponseType)
+					var success = this.ChangeWorkingDirectory(controlComplexSocket,
+					                                          directoryChange,
+					                                          createDirectoryIfNotExists);
+					if (!success)
 					{
-						case FtpResponseType.PermanentNegativeCompletion:
-							// TODO some parsing of the actual FtpReply.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
-							if (!createDirectoryIfNotExists)
-							{
-								return false;
-							}
-							ftpReply = this.Execute(controlComplexSocket,
-							                        "MKD {0}",
-							                        directoryChange);
-							var success = ftpReply.Success;
-							if (!success)
-							{
-								return false;
-							}
-							goto case FtpResponseType.PositiveCompletion;
-						case FtpResponseType.PositiveCompletion:
-							this._currentFtpDirectory = FtpDirectory.Create(this._currentFtpDirectory,
-							                                                directoryChange);
-							continue;
-						default:
-							return false;
+						return false;
 					}
 				}
+			}
+			return true;
+		}
+
+		private bool ChangeWorkingDirectory(ComplexSocket controlComplexSocket,
+		                                    string directory,
+		                                    bool createDirectoryIfNotExists = false)
+		{
+			var ftpReply = this.Execute(controlComplexSocket,
+			                            "CWD {0}",
+			                            directory);
+			switch (ftpReply.FtpResponseType)
+			{
+				case FtpResponseType.PermanentNegativeCompletion:
+					// TODO some parsing of the actual FtpReply.ResponseCode should be done in here. i assume 5xx-state means "directory does not exist" all the time, which might be wrong
+					if (!createDirectoryIfNotExists)
+					{
+						return false;
+					}
+					ftpReply = this.Execute(controlComplexSocket,
+					                        "MKD {0}",
+					                        directory);
+					var success = ftpReply.Success;
+					if (!success)
+					{
+						return false;
+					}
+					goto case FtpResponseType.PositiveCompletion;
+				case FtpResponseType.PositiveCompletion:
+					this._currentFtpDirectory = FtpDirectory.Create(this._currentFtpDirectory,
+					                                                directory);
+					break;
+				default:
+					return false;
 			}
 			return true;
 		}
@@ -806,8 +827,12 @@ namespace sharpLightFtp
 
 			ftpReply = this.WrappedControlSocketReceive(controlComplexSocket);
 			var success = ftpReply.Success;
+			if (!success)
+			{
+				return false;
+			}
 
-			return success;
+			return true;
 		}
 
 		#endregion

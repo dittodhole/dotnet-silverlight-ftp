@@ -18,8 +18,8 @@ namespace sharpLightFtp.Demo
 		private void DoStuff(object sender,
 		                     RoutedEventArgs e)
 		{
-			//this.GetListingAsync();
-			this.DownloadAsync();
+			this.GetListingAsync();
+			//this.DownloadAsync();
 			//this.UploadAsync();
 		}
 
@@ -30,7 +30,7 @@ namespace sharpLightFtp.Demo
 			{
 				using (ftpClient)
 				{
-					var ftpListItems = ftpClient.GetListing("/");
+					var ftpListItems = ftpClient.GetListing("/pub/addons");
 					this.Dispatcher.BeginInvoke(() =>
 					{
 						var messageBoxText = string.Format("success: {0}",
@@ -124,7 +124,8 @@ namespace sharpLightFtp.Demo
 				Username = username,
 				Password = password,
 				ChunkSendBufferSize = 1 << 5, // 32
-				WaitBeforeReceiveTimeSpan = TimeSpan.FromMilliseconds(100)
+				SocketReceiveBufferSize = 1 << 30, // 1073741824
+				WaitBeforeReceiveTimeSpan = TimeSpan.FromMilliseconds(200)
 			};
 			return ftpClient;
 		}
