@@ -8,7 +8,7 @@ If you have [NuGet](http://nuget.org) installed, run the following command in th
 
 ## Things to know ...
 
-I am using System.Net.FtpClient (http://netftp.codeplex.com/) as a guideline, as this project contains many helpful things (eg already implemented parsing of directory-listing, ...).
+I am using [System.Net.FtpClient](http://netftp.codeplex.com/) as a guideline, as this project contains many helpful things (eg already implemented parsing of directory-listing, ...).
 
 ### Configure your Silverlight-Application properly
 
