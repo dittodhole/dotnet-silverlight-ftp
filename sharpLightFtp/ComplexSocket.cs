@@ -23,8 +23,8 @@ namespace sharpLightFtp
 			this._endPoint = endPoint;
 			this._isControlSocket = isControlSocket;
 
-			this._socket.ReceiveBufferSize = ftpClient.ReceiveBufferSize;
-			this._socket.SendBufferSize = ftpClient.SendBufferSize;
+			this._socket.ReceiveBufferSize = ftpClient.SocketReceiveBufferSize;
+			this._socket.SendBufferSize = ftpClient.SocketSendBufferSize;
 		}
 
 		internal EndPoint EndPoint

@@ -8,11 +8,13 @@ namespace sharpLightFtp.Extensions
 	internal static class SocketExtensions
 	{
 		internal static FtpReply Receive(this Socket socket,
+		                                 int bufferSize,
 		                                 Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
 		                                 Encoding encoding)
 		{
 			string data;
-			if (!socket.ReceiveIntoString(socketAsyncEventArgsPredicate,
+			if (!socket.ReceiveIntoString(bufferSize,
+			                              socketAsyncEventArgsPredicate,
 			                              encoding,
 			                              out data))
 			{
@@ -25,6 +27,7 @@ namespace sharpLightFtp.Extensions
 		}
 
 		internal static bool ReceiveIntoString(this Socket socket,
+		                                       int bufferSize,
 		                                       Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
 		                                       Encoding encoding,
 		                                       out string data)
@@ -32,7 +35,8 @@ namespace sharpLightFtp.Extensions
 			byte[] bytes;
 			using (var memoryStream = new MemoryStream())
 			{
-				var success = socket.ReceiveIntoStream(socketAsyncEventArgsPredicate,
+				var success = socket.ReceiveIntoStream(bufferSize,
+				                                       socketAsyncEventArgsPredicate,
 				                                       memoryStream);
 				if (!success)
 				{
@@ -50,12 +54,12 @@ namespace sharpLightFtp.Extensions
 		}
 
 		internal static bool ReceiveIntoStream(this Socket socket,
+		                                       int bufferSize,
 		                                       Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
 		                                       Stream stream,
 		                                       Action<long> progressPredicate = null)
 		{
 			var bytesReceived = 0L;
-			var bufferSize = socket.ReceiveBufferSize;
 			int bytesTransferred;
 
 			do
@@ -98,6 +102,7 @@ namespace sharpLightFtp.Extensions
 		}
 
 		internal static bool Send(this Socket socket,
+		                          int bufferSize,
 		                          Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
 		                          Stream stream,
 		                          Action<long, long> progressPredicate = null)
@@ -105,7 +110,6 @@ namespace sharpLightFtp.Extensions
 			var bytesTotal = stream.Length;
 			var bytesSent = 0L;
 
-			var bufferSize = socket.SendBufferSize;
 			int bytesRead;
 			do
 			{

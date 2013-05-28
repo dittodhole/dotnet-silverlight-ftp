@@ -61,8 +61,10 @@ namespace sharpLightFtp
 
 		public FtpClient()
 		{
-			this.ReceiveBufferSize = 1 << 13; // 8192
-			this.SendBufferSize = 1 << 13; // 8192
+			this.SocketReceiveBufferSize = 1 << 13; // 8192
+			this.SocketSendBufferSize = 1 << 13; // 8192
+			this.ChunkReceiveBufferSize = 1 << 10; // 1024
+			this.ChunkSendBufferSize = 1 << 10; // 1024
 			this.Encoding = Encoding.UTF8;
 			this.ConnectTimeout = TimeSpan.FromSeconds(30);
 			this.ReceiveTimeout = TimeSpan.FromSeconds(30);
@@ -103,8 +105,10 @@ namespace sharpLightFtp
 		public string Password { get; set; }
 		public SocketClientAccessPolicyProtocol SocketClientAccessPolicyProtocol { get; set; }
 		public int Port { get; set; }
-		public int SendBufferSize { get; set; }
-		public int ReceiveBufferSize { get; set; }
+		public int SocketSendBufferSize { get; set; }
+		public int SocketReceiveBufferSize { get; set; }
+		public int ChunkSendBufferSize { get; set; }
+		public int ChunkReceiveBufferSize { get; set; }
 		public TimeSpan WaitBeforeReceiveTimeSpan { get; set; }
 
 		public void Dispose()
@@ -190,7 +194,8 @@ namespace sharpLightFtp
 							// reading transfer
 
 							string data;
-							var success = transferComplexSocket.Socket.ReceiveIntoString(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+							var success = transferComplexSocket.Socket.ReceiveIntoString(this.ChunkReceiveBufferSize,
+							                                                             () => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 							                                                             this.Encoding,
 							                                                             out data);
 							if (!success)
@@ -284,7 +289,8 @@ namespace sharpLightFtp
 
 					{
 						// sending transfer socket
-						var success = transferComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
+						var success = transferComplexSocket.Socket.Send(this.ChunkSendBufferSize,
+						                                                () => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
 						                                                stream,
 						                                                (bytesSent,
 						                                                 bytesTotal) =>
@@ -381,7 +387,8 @@ namespace sharpLightFtp
 							this.WaitBeforeReceive();
 
 							// reading transfer socket
-							var success = transferComplexSocket.Socket.ReceiveIntoStream(() => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+							var success = transferComplexSocket.Socket.ReceiveIntoStream(this.ChunkReceiveBufferSize,
+							                                                             () => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 							                                                             stream,
 							                                                             (bytesReceived) =>
 							                                                             {
@@ -551,10 +558,10 @@ namespace sharpLightFtp
 		}
 
 		/// <remarks>
-		///     When <paramref name="ftpFileSystemObject" /> is a <type name="FtpDirectory" /> this command will go to the parent directory, not the directory itself
+		///     When <paramref name="ftpFileSystemObject"/> is a <type name="FtpDirectory"/> this command will go to the parent directory, not the directory itself
 		/// </remarks>
 		/// <remarks>
-		///     When <paramref name="ftpFileSystemObject" /> is a <type name="FtpFile" /> this command will got to the containing directory
+		///     When <paramref name="ftpFileSystemObject"/> is a <type name="FtpFile"/> this command will got to the containing directory
 		/// </remarks>
 		private bool GotoParentDirectory(ComplexSocket controlComplexSocket,
 		                                 FtpFileSystemObject ftpFileSystemObject,
@@ -721,7 +728,7 @@ namespace sharpLightFtp
 		#region communcation helpers
 
 		/// <remarks>
-		///     This code does sending specifically for the <paramref name="controlComplexSocket" /> and does some logging
+		///     This code does sending specifically for the <paramref name="controlComplexSocket"/> and does some logging
 		/// </remarks>
 		private bool WrappedControlSocketSend(ComplexSocket controlComplexSocket,
 		                                      string command,
@@ -744,7 +751,8 @@ namespace sharpLightFtp
 				var buffer = this.Encoding.GetBytes(command);
 				using (var memoryStream = new MemoryStream(buffer))
 				{
-					var success = controlComplexSocket.Socket.Send(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
+					var success = controlComplexSocket.Socket.Send(this.ChunkSendBufferSize,
+					                                               () => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.SendTimeout),
 					                                               memoryStream);
 					return success;
 				}
@@ -752,13 +760,14 @@ namespace sharpLightFtp
 		}
 
 		/// <remarks>
-		///     This code does receiving specifically for the <paramref name="controlComplexSocket" /> and does some logging
+		///     This code does receiving specifically for the <paramref name="controlComplexSocket"/> and does some logging
 		/// </remarks>
 		private FtpReply WrappedControlSocketReceive(ComplexSocket controlComplexSocket)
 		{
 			this.WaitBeforeReceive();
 
-			var ftpReply = controlComplexSocket.Socket.Receive(() => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
+			var ftpReply = controlComplexSocket.Socket.Receive(this.ChunkReceiveBufferSize,
+			                                                   () => controlComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 			                                                   this.Encoding);
 
 			{
@@ -780,7 +789,7 @@ namespace sharpLightFtp
 		}
 
 		/// <remarks>
-		///     Sometimes <paramref name="ftpReply" /> has 2 lines or more with different <type name="FtpResponseType" />
+		///     Sometimes <paramref name="ftpReply"/> has 2 lines or more with different <type name="FtpResponseType"/>
 		/// </remarks>
 		private bool AlreadyCompletedOrFinalFtpReplySuccess(ComplexSocket controlComplexSocket,
 		                                                    FtpReply ftpReply)

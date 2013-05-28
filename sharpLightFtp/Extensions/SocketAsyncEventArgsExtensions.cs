@@ -10,7 +10,13 @@ namespace sharpLightFtp.Extensions
 			// TODO check against .SocketError
 			// TODO check against ((SocketAsyncEventArgsUserToken) .UserToken).TimeoutExpired
 
-			return socketAsyncEventArgs.SocketError == SocketError.Success;
+			var socketError = socketAsyncEventArgs.SocketError;
+			if (socketError != SocketError.Success)
+			{
+				return false;
+			}
+
+			return true;
 		}
 	}
 }
