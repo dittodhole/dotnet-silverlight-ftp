@@ -64,10 +64,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Silverlight.Testing">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Microsoft SDKs\Silverlight\v5.0\Toolkit\dec11\Testing\Microsoft.Silverlight.Testing.dll</HintPath>
+      <HintPath>C:\Program Files (x86)\Microsoft SDKs\Silverlight\v5.0\Toolkit\dec11\Testing\Microsoft.Silverlight.Testing.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTesting.Silverlight">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Microsoft SDKs\Silverlight\v5.0\Toolkit\dec11\Testing\Microsoft.VisualStudio.QualityTools.UnitTesting.Silverlight.dll</HintPath>
+      <HintPath>C:\Program Files (x86)\Microsoft SDKs\Silverlight\v5.0\Toolkit\dec11\Testing\Microsoft.VisualStudio.QualityTools.UnitTesting.Silverlight.dll</HintPath>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="System.Windows" />

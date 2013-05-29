@@ -171,6 +171,7 @@ namespace sharpLightFtp
 					}
 				}
 
+				if (!string.IsNullOrEmpty(ftpDirectory.DirectoryName))
 				{
 					var success = this.ChangeWorkingDirectory(controlComplexSocket,
 					                                          ftpDirectory.DirectoryName);

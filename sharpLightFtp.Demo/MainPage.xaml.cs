@@ -30,7 +30,8 @@ namespace sharpLightFtp.Demo
 			{
 				using (ftpClient)
 				{
-					var ftpListItems = ftpClient.GetListing("/pub/addons");
+					//var ftpListItems = ftpClient.GetListing("/pub/addons");
+					var ftpListItems = ftpClient.GetListing("/");
 					this.Dispatcher.BeginInvoke(() =>
 					{
 						var messageBoxText = string.Format("success: {0}",

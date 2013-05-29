@@ -9,6 +9,10 @@ namespace sharpLightFtp.Extensions
 	{
 		public static IEnumerable<string> GetHierarchy(this FtpDirectory ftpDirectory)
 		{
+			if (ftpDirectory == null)
+			{
+				return Enumerable.Empty<string>();
+			}
 			var fullName = ftpDirectory.FullName;
 			if (string.IsNullOrEmpty(fullName))
 			{

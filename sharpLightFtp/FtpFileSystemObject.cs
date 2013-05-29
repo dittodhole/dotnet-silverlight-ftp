@@ -38,6 +38,10 @@ namespace sharpLightFtp
 		public FtpDirectory GetParentFtpDirectory()
 		{
 			var containingDirectory = this.GetParentDirectory();
+			if (string.IsNullOrEmpty(containingDirectory))
+			{
+				return null;
+			}
 			var ftpDirectory = FtpDirectory.Create(containingDirectory);
 
 			return ftpDirectory;
@@ -45,7 +49,11 @@ namespace sharpLightFtp
 
 		internal string GetParentDirectory()
 		{
-			var directoryName = Path.GetDirectoryName(this._fullName);
+			if (string.IsNullOrEmpty(this.FullName))
+			{
+				return null;
+			}
+			var directoryName = Path.GetDirectoryName(this.FullName);
 			var containingDirectory = directoryName;
 
 			return containingDirectory;
@@ -53,7 +61,7 @@ namespace sharpLightFtp
 
 		protected string GetFileName()
 		{
-			var fileName = Path.GetFileName(this._fullName);
+			var fileName = Path.GetFileName(this.FullName);
 
 			return fileName;
 		}
