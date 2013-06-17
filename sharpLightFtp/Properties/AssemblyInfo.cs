@@ -8,6 +8,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyProduct("sharpLightFtp")]
 [assembly: ComVisible(false)]
 [assembly: Guid("aeb3da47-5a6c-438c-b863-d9754f62afbf")]
-[assembly: AssemblyVersion("0.1.5.0")]
-[assembly: AssemblyFileVersion("0.1.5.0")]
+[assembly: AssemblyVersion("0.1.6.0")]
+[assembly: AssemblyFileVersion("0.1.6.0")]
 [assembly: CLSCompliant(false)]

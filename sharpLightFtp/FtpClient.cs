@@ -406,7 +406,8 @@ namespace sharpLightFtp
 							var success = transferComplexSocket.Socket.ReceiveIntoStream(this.ChunkReceiveBufferSize,
 							                                                             () => transferComplexSocket.GetSocketAsyncEventArgsWithUserToken(this.ReceiveTimeout),
 							                                                             stream,
-							                                                             (bytesReceived) =>
+							                                                             bytesTotal,
+							                                                             bytesReceived =>
 							                                                             {
 								                                                             var downloadProgressEventArgs = new DownloadProgressEventArgs(bytesReceived,
 								                                                                                                                           bytesTotal);

@@ -57,9 +57,10 @@ namespace sharpLightFtp.Extensions
 		                                       int bufferSize,
 		                                       Func<SocketAsyncEventArgs> socketAsyncEventArgsPredicate,
 		                                       Stream stream,
+		                                       long? bytesTotal = null,
 		                                       Action<long> progressPredicate = null)
 		{
-			var bytesReceived = 0L;
+			var bytesTotallyTransferred = 0L;
 			int bytesTransferred;
 
 			do
@@ -91,12 +92,16 @@ namespace sharpLightFtp.Extensions
 				             offset,
 				             bytesTransferred);
 
+				bytesTotallyTransferred += bytesTransferred;
+
 				if (progressPredicate != null)
 				{
-					bytesReceived += bytesTransferred;
-					progressPredicate.Invoke(bytesReceived);
+					progressPredicate.Invoke(bytesTotallyTransferred);
 				}
-			} while (bytesTransferred == bufferSize); // TODO I know that there *might* be a chance that this is not valid ...
+			} while (WhileCondition(bytesTransferred,
+			                        bufferSize,
+			                        bytesTotallyTransferred,
+			                        bytesTotal));
 
 			return true;
 		}
@@ -108,20 +113,20 @@ namespace sharpLightFtp.Extensions
 		                          Action<long, long> progressPredicate = null)
 		{
 			var bytesTotal = stream.Length;
-			var bytesSent = 0L;
+			var bytesTotallyTransferred = 0L;
 
-			int bytesRead;
+			int bytesTransferred;
 			do
 			{
 				using (var socketAsyncEventArgs = socketAsyncEventArgsPredicate.Invoke())
 				{
 					var buffer = new byte[bufferSize];
-					bytesRead = stream.Read(buffer,
-					                        0,
-					                        buffer.Length);
+					bytesTransferred = stream.Read(buffer,
+					                               0,
+					                               buffer.Length);
 					socketAsyncEventArgs.SetBuffer(buffer,
 					                               0,
-					                               bytesRead);
+					                               bytesTransferred);
 					SocketHelper.WrapAsyncCall(socket.SendAsync,
 					                           socketAsyncEventArgs);
 					var success = socketAsyncEventArgs.GetSuccess();
@@ -129,16 +134,34 @@ namespace sharpLightFtp.Extensions
 					{
 						return false;
 					}
+					bytesTotallyTransferred += bytesTransferred;
 					if (progressPredicate != null)
 					{
-						bytesSent += bytesRead;
-						progressPredicate.Invoke(bytesSent,
+						progressPredicate.Invoke(bytesTotallyTransferred,
 						                         bytesTotal);
 					}
 				}
-			} while (bytesRead == bufferSize); // TODO I know that there *might* be a chance that this is not valid ...
+			} while (WhileCondition(bytesTransferred,
+			                        bufferSize,
+			                        bytesTotallyTransferred,
+			                        bytesTotal));
 
 			return true;
+		}
+
+		private static bool WhileCondition(int bytesTransferred,
+		                                   int bufferSize,
+		                                   long bytesTotallyTransferred,
+		                                   long? bytesTotal)
+		{
+			if (bytesTotal.HasValue)
+			{
+				return bytesTotallyTransferred < bytesTotal.Value;
+			}
+			else
+			{
+				return bytesTransferred == bufferSize;
+			}
 		}
 	}
 }
