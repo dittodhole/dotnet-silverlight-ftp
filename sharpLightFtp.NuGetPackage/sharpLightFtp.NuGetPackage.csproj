@@ -47,7 +47,6 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="packages.config" />
-    <None Include="_MSBuild\NuGetPackageAndPublish.targets" />
     <None Include="sharpLightFtp.NuGetPackage.nuspec">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -63,6 +62,7 @@
     <None Include="Package\tools\init.ps1" />
     <None Include="Package\tools\install.ps1" />
     <None Include="Package\tools\uninstall.ps1" />
+    <None Include="_MSBuild\NuGetPackageAndPublish.targets" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
