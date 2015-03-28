@@ -97,9 +97,9 @@ namespace sharpLightFtp
 
             var ftpResponseType = FtpResponseType.None;
             var messages = new List<string>();
-            var stringResponseCode = String.Empty;
+            var stringResponseCode = string.Empty;
             var responseCode = 0;
-            var responseMessage = String.Empty;
+            var responseMessage = string.Empty;
 
             var lines = data.Split(Environment.NewLine.ToCharArray(),
                                    StringSplitOptions.RemoveEmptyEntries);
@@ -117,7 +117,7 @@ namespace sharpLightFtp
                     {
                         responseMessage = match.Groups[2].Value;
                     }
-                    if (!String.IsNullOrWhiteSpace(stringResponseCode))
+                    if (!string.IsNullOrWhiteSpace(stringResponseCode))
                     {
                         var firstCharacter = stringResponseCode.First();
                         var currentCulture = Thread.CurrentThread.CurrentCulture;
@@ -188,7 +188,7 @@ namespace sharpLightFtp
 
                 if (wereEqualBefore)
                 {
-                    if (!String.Equals(sourceDirectory,
+                    if (!string.Equals(sourceDirectory,
                                        targetDirectory))
                     {
                         levelOfEqual = i;

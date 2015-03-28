@@ -161,7 +161,7 @@ namespace sharpLightFtp
                     }
                 }
 
-                if (!String.IsNullOrEmpty(ftpDirectory.DirectoryName))
+                if (!string.IsNullOrEmpty(ftpDirectory.DirectoryName))
                 {
                     var success = await this.ChangeWorkingDirectoryAsync(controlComplexSocket,
                                                                          ftpDirectory.DirectoryName,
@@ -212,7 +212,7 @@ namespace sharpLightFtp
                                 return Enumerable.Empty<FtpListItem>();
                             }
 
-                            rawListing = (receiveResult.Data ?? String.Empty).Split(Environment.NewLine.ToCharArray(),
+                            rawListing = (receiveResult.Data ?? string.Empty).Split(Environment.NewLine.ToCharArray(),
                                                                                     StringSplitOptions.RemoveEmptyEntries);
                         }
                     }
@@ -800,7 +800,7 @@ namespace sharpLightFtp
 
             foreach (var directoryChange in directoryChanges)
             {
-                if (String.Equals(directoryChange,
+                if (string.Equals(directoryChange,
                                   FtpFileSystemObject.ParentChangeCommand))
                 {
                     var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
@@ -946,11 +946,11 @@ namespace sharpLightFtp
                                                  string command,
                                                  params object[] args)
         {
-            command = String.Format(command,
+            command = string.Format(command,
                                     args);
             if (!command.EndsWith(Environment.NewLine))
             {
-                command = String.Concat(command,
+                command = string.Concat(command,
                                         Environment.NewLine);
             }
 

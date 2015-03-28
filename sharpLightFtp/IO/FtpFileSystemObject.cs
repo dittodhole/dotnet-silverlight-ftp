@@ -10,14 +10,14 @@ namespace sharpLightFtp.IO
 
         protected FtpFileSystemObject(string path)
         {
-            if (String.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(path))
             {
                 throw new ArgumentException("path can not be null or empty",
                                             "path");
             }
             if (path.Contains(ParentChangeCommand))
             {
-                throw new ArgumentException(String.Format("path can not contain '{0}'",
+                throw new ArgumentException(string.Format("path can not contain '{0}'",
                                                           ParentChangeCommand),
                                             "path");
             }
