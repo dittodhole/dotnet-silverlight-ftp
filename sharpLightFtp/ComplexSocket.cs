@@ -1,117 +1,140 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 using sharpLightFtp.Extensions;
 
 namespace sharpLightFtp
 {
-	public sealed class ComplexSocket : IDisposable
-	{
-		private readonly EndPoint _endPoint;
-		private readonly FtpClient _ftpClient;
-		private readonly bool _isControlSocket;
+    internal sealed class ComplexSocket : IDisposable
+    {
+        private readonly EndPoint _endPoint;
+        private readonly bool _isControlSocket;
+        private readonly Socket _socket;
+        private readonly SocketClientAccessPolicyProtocol _socketClientAccessPolicyProtocol;
 
-		private readonly Socket _socket = new Socket(AddressFamily.InterNetwork,
-		                                             SocketType.Stream,
-		                                             ProtocolType.Tcp);
+        private ComplexSocket(EndPoint endPoint,
+                              bool isControlSocket,
+                              int receiveBufferSize,
+                              int sendBufferSize,
+                              SocketClientAccessPolicyProtocol socketClientAccessPolicyProtocol)
+        {
+            this._endPoint = endPoint;
+            this._isControlSocket = isControlSocket;
+            this._socketClientAccessPolicyProtocol = socketClientAccessPolicyProtocol;
+            this._socket = new Socket(AddressFamily.InterNetwork,
+                                      SocketType.Stream,
+                                      ProtocolType.Tcp)
+            {
+                ReceiveBufferSize = receiveBufferSize,
+                SendBufferSize = sendBufferSize
+            };
+        }
 
-		internal ComplexSocket(FtpClient ftpClient,
-		                       EndPoint endPoint,
-		                       bool isControlSocket)
-		{
-			this._ftpClient = ftpClient;
-			this._endPoint = endPoint;
-			this._isControlSocket = isControlSocket;
+        public EndPoint EndPoint
+        {
+            get
+            {
+                return this._endPoint;
+            }
+        }
 
-			this._socket.ReceiveBufferSize = ftpClient.SocketReceiveBufferSize;
-			this._socket.SendBufferSize = ftpClient.SocketSendBufferSize;
-		}
+        public Socket Socket
+        {
+            get
+            {
+                return this._socket;
+            }
+        }
 
-		internal EndPoint EndPoint
-		{
-			get
-			{
-				return this._endPoint;
-			}
-		}
+        public bool IsControlSocket
+        {
+            get
+            {
+                return this._isControlSocket;
+            }
+        }
 
-		internal Socket Socket
-		{
-			get
-			{
-				return this._socket;
-			}
-		}
+        public bool Connected
+        {
+            get
+            {
+                return this._socket.Connected;
+            }
+        }
 
-		public bool IsControlSocket
-		{
-			get
-			{
-				return this._isControlSocket;
-			}
-		}
+        public SocketClientAccessPolicyProtocol SocketClientAccessPolicyProtocol
+        {
+            get
+            {
+                return this._socketClientAccessPolicyProtocol;
+            }
+        }
 
-		public bool Connected
-		{
-			get
-			{
-				return this._socket.Connected;
-			}
-		}
+        #region IDisposable Members
 
-		public FtpClient FtpClient
-		{
-			get
-			{
-				return this._ftpClient;
-			}
-		}
+        public void Dispose()
+        {
+            this._socket.Dispose();
+        }
 
-		#region IDisposable Members
+        #endregion
 
-		public void Dispose()
-		{
-			this._socket.Dispose();
-		}
+        public async Task<bool> ConnectAsync(CancellationToken cancellationToken)
+        {
+            using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs())
+            {
+                await this._socket.ExecuteAsync(arg => arg.ConnectAsync,
+                                                socketAsyncEventArgs,
+                                                cancellationToken);
+                var success = socketAsyncEventArgs.GetSuccess();
 
-		#endregion
+                return success;
+            }
+        }
 
-		internal bool Connect(TimeSpan timeout)
-		{
-			using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgsWithUserToken(timeout))
-			{
-				SocketHelper.WrapAsyncCall(this._socket.ConnectAsync,
-				                           socketAsyncEventArgs);
-				var success = socketAsyncEventArgs.GetSuccess();
+        public SocketAsyncEventArgs GetSocketAsyncEventArgs()
+        {
+            var socketAsyncEventArgs = new SocketAsyncEventArgs
+            {
+                RemoteEndPoint = this.EndPoint,
+                SocketClientAccessPolicyProtocol = this.SocketClientAccessPolicyProtocol
+            };
 
-				return success;
-			}
-		}
+            return socketAsyncEventArgs;
+        }
 
-		internal SocketAsyncEventArgs GetSocketAsyncEventArgs()
-		{
-			var socketAsyncEventArgs = new SocketAsyncEventArgs
-			{
-				RemoteEndPoint = this.EndPoint,
-				SocketClientAccessPolicyProtocol = this.FtpClient.SocketClientAccessPolicyProtocol
-			};
+        public static ComplexSocket CreateForTransfer(FtpClient ftpClient,
+                                                      IPEndPoint ipEndPoint)
+        {
+            // TODO this method should be moved to a factory
+            // TODO add check for ftpClient.Port 0 - 0xffff
 
-			return socketAsyncEventArgs;
-		}
+            var complexSocket = new ComplexSocket(ipEndPoint,
+                                                  false,
+                                                  ftpClient.SocketReceiveBufferSize,
+                                                  ftpClient.SocketSendBufferSize,
+                                                  ftpClient.SocketClientAccessPolicyProtocol);
 
-		internal SocketAsyncEventArgs GetSocketAsyncEventArgsWithUserToken(TimeSpan timeout)
-		{
-			var socketAsyncEventArgs = this.GetSocketAsyncEventArgs();
-			socketAsyncEventArgs.UserToken = new SocketAsyncEventArgsUserToken(timeout);
-			socketAsyncEventArgs.Completed += (sender,
-			                                   args) =>
-			{
-				var userToken = args.UserToken;
-				var socketAsyncEventArgsUserToken = (SocketAsyncEventArgsUserToken) userToken;
-				socketAsyncEventArgsUserToken.Signal();
-			};
+            return complexSocket;
+        }
 
-			return socketAsyncEventArgs;
-		}
-	}
+        public static ComplexSocket CreateForControl(FtpClient ftpClient)
+        {
+            // TODO this method should be moved to a factory
+            // TODO add check for ftpClient.Port 0 - 0xffff
+
+            var endPoint = new DnsEndPoint(ftpClient.Server,
+                                           ftpClient.Port);
+
+            var complexSocket = new ComplexSocket(endPoint,
+                                                  true,
+                                                  ftpClient.SocketReceiveBufferSize,
+                                                  ftpClient.SocketSendBufferSize,
+                                                  ftpClient.SocketClientAccessPolicyProtocol);
+
+            return complexSocket;
+        }
+    }
 }
