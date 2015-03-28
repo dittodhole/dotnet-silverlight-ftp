@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using sharpLightFtp.Extensions;
+using sharpLightFtp.IO;
 
 namespace sharpLightFtp
 {
@@ -85,12 +86,10 @@ namespace sharpLightFtp
         {
             using (var socketAsyncEventArgs = this.GetSocketAsyncEventArgs())
             {
-                await this._socket.ExecuteAsync(arg => arg.ConnectAsync,
-                                                socketAsyncEventArgs,
-                                                cancellationToken);
-                var success = socketAsyncEventArgs.GetSuccess();
-
-                return success;
+                var socketError = await this._socket.ExecuteAsync(arg => arg.ConnectAsync,
+                                                                     socketAsyncEventArgs,
+                                                                     cancellationToken);
+                return socketError == SocketError.Success;
             }
         }
 

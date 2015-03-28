@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 using sharpLightFtp.IO;
 
 namespace sharpLightFtp.Extensions
@@ -36,70 +37,63 @@ namespace sharpLightFtp.Extensions
                                                            Encoding encoding,
                                                            CancellationToken cancellationToken)
         {
-            byte[] bytes;
-            using (var memoryStream = new MemoryStream())
+            var rawFtpResponse = await socket.ReceiveAsync(bufferSize,
+                                                           createSocketAsyncEventArgsPredicate,
+                                                           cancellationToken);
+            if (!rawFtpResponse.Success)
             {
-                var success = await socket.ReceiveAsync(bufferSize,
-                                                        createSocketAsyncEventArgsPredicate,
-                                                        memoryStream,
-                                                        cancellationToken);
-                if (!success)
-                {
-                    return FtpResponse.Failed;
-                }
-
-                bytes = memoryStream.ToArray();
+                return FtpResponse.Failed;
             }
 
-            var data = encoding.GetString(bytes,
+            var data = encoding.GetString(rawFtpResponse.Buffer,
                                           0,
-                                          bytes.Length);
+                                          rawFtpResponse.Buffer.Length);
             var ftpResponse = new FtpResponse(data);
 
             return ftpResponse;
         }
 
-        internal static async Task<bool> ReceiveAsync(this Socket socket,
-                                                      int bufferSize,
-                                                      Func<SocketAsyncEventArgs> createSocketAsyncEventArgsPredicate,
-                                                      Stream stream,
-                                                      CancellationToken cancellationToken,
-                                                      long? bytesTotal = null,
-                                                      Action<long> progressPredicate = null)
+        internal static async Task<RawFtpResponse> ReceiveAsync(this Socket socket,
+                                                                int bufferSize,
+                                                                Func<SocketAsyncEventArgs> createSocketAsyncEventArgsPredicate,
+                                                                CancellationToken cancellationToken,
+                                                                long? bytesTotal = null,
+                                                                Action<long> progressPredicate = null)
         {
-            var bytesTotallyTransferred = 0L;
+            var bytesTotallyTransferred = 0;
             int bytesTransferred;
 
+            var result = new byte[0];
             do
             {
-                byte[] buffer;
-                int offset;
+                var buffer = new byte[bufferSize];
 
                 using (var socketAsyncEventArgs = createSocketAsyncEventArgsPredicate.Invoke())
                 {
-                    buffer = new byte[bufferSize];
                     socketAsyncEventArgs.SetBuffer(buffer,
                                                    0,
                                                    bufferSize);
-                    await socket.ExecuteAsync(arg => arg.ReceiveAsync,
-                                              socketAsyncEventArgs,
-                                              cancellationToken);
-                    var success = socketAsyncEventArgs.GetSuccess();
-                    if (!success)
+                    var socketError = await socket.ExecuteAsync(arg => arg.ReceiveAsync,
+                                                                socketAsyncEventArgs,
+                                                                cancellationToken);
+                    if (socketError != SocketError.Success)
                     {
-                        return false;
+                        return RawFtpResponse.Failed;
                     }
 
-                    buffer = socketAsyncEventArgs.Buffer;
                     bytesTransferred = socketAsyncEventArgs.BytesTransferred;
-                    offset = socketAsyncEventArgs.Offset;
                 }
 
-                stream.Write(buffer,
-                             offset,
-                             bytesTransferred);
-
+                var offset = bytesTotallyTransferred;
                 bytesTotallyTransferred += bytesTransferred;
+
+                Array.Resize(ref result,
+                             bytesTotallyTransferred);
+                Array.Copy(buffer,
+                           0,
+                           result,
+                           offset,
+                           bytesTransferred);
 
                 if (progressPredicate != null)
                 {
@@ -110,17 +104,18 @@ namespace sharpLightFtp.Extensions
                                                             bytesTotallyTransferred,
                                                             bytesTotal));
 
-            stream.Position = 0L;
+            var rawFtpResponse = new RawFtpResponse(true,
+                                                    result);
 
-            return true;
+            return rawFtpResponse;
         }
 
         public static async Task<bool> SendAsync(this Socket socket,
-                                                   int bufferSize,
-                                                   Func<SocketAsyncEventArgs> createSocketAsyncEventArgsPredicate,
-                                                   Stream stream,
-                                                   CancellationToken cancellationToken,
-                                                   Action<long, long> progressPredicate = null)
+                                                 int bufferSize,
+                                                 Func<SocketAsyncEventArgs> createSocketAsyncEventArgsPredicate,
+                                                 Stream stream,
+                                                 CancellationToken cancellationToken,
+                                                 Action<long, long> progressPredicate = null)
         {
             stream.Position = 0L;
 
@@ -139,11 +134,10 @@ namespace sharpLightFtp.Extensions
                     socketAsyncEventArgs.SetBuffer(buffer,
                                                    0,
                                                    bytesTransferred);
-                    await socket.ExecuteAsync(arg => arg.SendAsync,
-                                              socketAsyncEventArgs,
-                                              cancellationToken);
-                    var success = socketAsyncEventArgs.GetSuccess();
-                    if (!success)
+                    var socketError = await socket.ExecuteAsync(arg => arg.SendAsync,
+                                                                socketAsyncEventArgs,
+                                                                cancellationToken);
+                    if (socketError != SocketError.Success)
                     {
                         return false;
                     }
@@ -162,28 +156,28 @@ namespace sharpLightFtp.Extensions
             return true;
         }
 
-        public static async Task<SocketAsyncEventArgs> ExecuteAsync(this Socket socket,
-                                                                    Func<Socket, Func<SocketAsyncEventArgs, bool>> methodPredicate,
-                                                                    SocketAsyncEventArgs socketAsyncEventArgs,
-                                                                    CancellationToken cancellationToken)
+        public static async Task<SocketError> ExecuteAsync(this Socket socket,
+                                                           Func<Socket, Func<SocketAsyncEventArgs, bool>> methodPredicate,
+                                                           SocketAsyncEventArgs socketAsyncEventArgs,
+                                                           CancellationToken cancellationToken)
         {
-            var taskCompletionSource = new TaskCompletionSource<SocketAsyncEventArgs>();
+            var asyncAutoResetEvent = new AsyncAutoResetEvent(false);
             socketAsyncEventArgs.Completed += (sender,
                                                args) =>
             {
-                taskCompletionSource.SetResult(args);
+                asyncAutoResetEvent.Set();
             };
 
             var method = methodPredicate.Invoke(socket);
             var async = method.Invoke(socketAsyncEventArgs);
             if (!async)
             {
-                taskCompletionSource.SetResult(socketAsyncEventArgs);
+                asyncAutoResetEvent.Set();
             }
 
-            // TODO add cancellationToken!!
+            await asyncAutoResetEvent.WaitAsync(cancellationToken);
 
-            return await taskCompletionSource.Task;
+            return socketAsyncEventArgs.SocketError;
         }
     }
 }

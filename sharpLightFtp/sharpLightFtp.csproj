@@ -118,7 +118,6 @@
     <Compile Include="ComplexSocket.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Extensions\FtpFileSystemObjectExtensions.cs" />
-    <Compile Include="Extensions\SocketAsyncEventArgsExtensions.cs" />
     <Compile Include="FtpClient.cs" />
     <Compile Include="FtpClientHelper.cs" />
     <Compile Include="IO\FtpDirectory.cs" />
@@ -126,6 +125,7 @@
     <Compile Include="IO\FtpFileSystemObject.cs" />
     <Compile Include="FtpListFormatParser.cs" />
     <Compile Include="IO\FtpListItem.cs" />
+    <Compile Include="IO\RawFtpResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="IO\FtpResponse.cs" />
   </ItemGroup>

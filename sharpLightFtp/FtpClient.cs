@@ -16,7 +16,6 @@ namespace sharpLightFtp
     // TODO readd logging
     public sealed class FtpClient : IDisposable
     {
-        private readonly Lazy<FtpFeatures> _ftpFeatures;
         private readonly AsyncLock _mutex = new AsyncLock();
         private bool _authenticated;
         private ComplexSocket _controlComplexSocket;
@@ -68,43 +67,11 @@ namespace sharpLightFtp
             this.ChunkReceiveBufferSize = 1400;
             this.ChunkSendBufferSize = 1400;
             this.Encoding = Encoding.UTF8;
-            this.ConnectTimeout = TimeSpan.FromSeconds(30);
-            this.ReceiveTimeout = TimeSpan.FromSeconds(30);
-            this.SendTimeout = TimeSpan.FromMinutes(5);
             this.WaitBeforeReceiveTimeSpan = TimeSpan.Zero;
             this.SocketClientAccessPolicyProtocol = SocketClientAccessPolicyProtocol.Http;
-
-            this._ftpFeatures = new Lazy<FtpFeatures>(() =>
-            {
-                // TODO this should be refactored to an ENSURE-method
-                var ftpReply = this.ExecuteWithoutMutexAsync(this._controlComplexSocket,
-                                                             CancellationToken.None,
-                                                             "FEAT")
-                                   .Result;
-                if (!ftpReply.Success)
-                {
-                    return FtpFeatures.Unknown;
-                }
-
-                var messages = ftpReply.Messages;
-                var ftpFeatures = FtpClientHelper.ParseFtpFeatures(messages);
-
-                return ftpFeatures;
-            });
-        }
-
-        public FtpFeatures FtpFeatures
-        {
-            get
-            {
-                return this._ftpFeatures.Value;
-            }
         }
 
         public Encoding Encoding { get; set; }
-        public TimeSpan ConnectTimeout { get; set; }
-        public TimeSpan ReceiveTimeout { get; set; }
-        public TimeSpan SendTimeout { get; set; }
         public string Server { get; set; }
         public string Username { get; set; }
         public string Password { get; set; }
@@ -165,12 +132,13 @@ namespace sharpLightFtp
                 }
 
                 string command;
-                if (this.FtpFeatures.HasFlag(FtpFeatures.MLSD))
+                var ftpFeatures = await this.GetFtpFeaturesAsync(cancellationToken);
+                if (ftpFeatures.HasFlag(FtpFeatures.MLSD))
                 {
                     ftpListType = FtpListType.MLSD;
                     command = "MLSD";
                 }
-                else if (this.FtpFeatures.HasFlag(FtpFeatures.MLST))
+                else if (ftpFeatures.HasFlag(FtpFeatures.MLST))
                 {
                     ftpListType = FtpListType.MLST;
                     command = "MLST";
@@ -521,21 +489,24 @@ namespace sharpLightFtp
                             this.WaitBeforeReceive();
 
                             // reading transfer socket
-                            var success = await transferComplexSocket.Socket.ReceiveAsync(this.ChunkReceiveBufferSize,
-                                                                                          transferComplexSocket.GetSocketAsyncEventArgs,
-                                                                                          stream,
-                                                                                          cancellationToken,
-                                                                                          bytesTotal,
-                                                                                          bytesReceived =>
-                                                                                          {
-                                                                                              var downloadProgressEventArgs = new DownloadProgressEventArgs(bytesReceived,
-                                                                                                                                                            bytesTotal);
-                                                                                              this.OnDownloadProgressAsync(downloadProgressEventArgs);
-                                                                                          });
-                            if (!success)
+                            var rawFtpResponse = await transferComplexSocket.Socket.ReceiveAsync(this.ChunkReceiveBufferSize,
+                                                                                                 transferComplexSocket.GetSocketAsyncEventArgs,
+                                                                                                 cancellationToken,
+                                                                                                 bytesTotal,
+                                                                                                 bytesReceived =>
+                                                                                                 {
+                                                                                                     var downloadProgressEventArgs = new DownloadProgressEventArgs(bytesReceived,
+                                                                                                                                                                   bytesTotal);
+                                                                                                     this.OnDownloadProgressAsync(downloadProgressEventArgs);
+                                                                                                 });
+                            if (!rawFtpResponse.Success)
                             {
                                 return false;
                             }
+
+                            stream.Write(rawFtpResponse.Buffer,
+                                         0,
+                                         rawFtpResponse.Buffer.Length);
                         }
                     }
 
@@ -713,11 +684,71 @@ namespace sharpLightFtp
             }
         }
 
+        #region ensuring connection and authentication
+
+        private async Task<ComplexSocket> EnsureConnectionAndAuthenticationAsync(CancellationToken cancellationToken)
+        {
+            var controlComplexSocket = this._controlComplexSocket ?? ComplexSocket.CreateForControl(this);
+            if (!controlComplexSocket.Connected)
+            {
+                this._authenticated = false;
+
+                var success = await controlComplexSocket.ConnectAsync(cancellationToken);
+                if (!success)
+                {
+                    controlComplexSocket = null;
+                }
+                else
+                {
+                    var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken);
+                    if (!ftpReply.Success)
+                    {
+                        controlComplexSocket = null;
+                    }
+                }
+            }
+            if (controlComplexSocket != null)
+            {
+                if (this._authenticated)
+                {
+                    return controlComplexSocket;
+                }
+
+                var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
+                                                                   cancellationToken,
+                                                                   "USER {0}",
+                                                                   this.Username);
+                if (ftpReply.FtpResponseType == FtpResponseType.PositiveIntermediate)
+                {
+                    ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
+                                                                   cancellationToken,
+                                                                   "PASS {0}",
+                                                                   this.Password);
+                }
+
+                this._authenticated = ftpReply.Success;
+                if (!this._authenticated)
+                {
+                    controlComplexSocket = null;
+                }
+            }
+
+            this._controlComplexSocket = controlComplexSocket;
+
+            return controlComplexSocket;
+        }
+
+        #endregion
+
+        #region actions
+
         private async Task<FtpReply> ExecuteWithoutMutexAsync(ComplexSocket controlComplexSocket,
                                                               CancellationToken cancellationToken,
                                                               string command,
                                                               params object[] args)
         {
+            // TODO mutex in names should DIE!
             return await this.ExecuteWithoutMutexAsync(controlComplexSocket,
                                                        cancellationToken,
                                                        null,
@@ -731,6 +762,7 @@ namespace sharpLightFtp
                                                               string command,
                                                               params object[] args)
         {
+            // TODO mutex in names should DIE!
             {
                 var success = await this.SendAndLogAsync(controlComplexSocket,
                                                          cancellationToken,
@@ -831,59 +863,20 @@ namespace sharpLightFtp
             return true;
         }
 
-        #region ensuring connection and authentication
-
-        private async Task<ComplexSocket> EnsureConnectionAndAuthenticationAsync(CancellationToken cancellationToken)
+        private async Task<FtpFeatures> GetFtpFeaturesAsync(CancellationToken cancellationToken)
         {
-            var controlComplexSocket = this._controlComplexSocket ?? ComplexSocket.CreateForControl(this);
-            if (!controlComplexSocket.Connected)
+            var ftpReply = await this.ExecuteWithoutMutexAsync(this._controlComplexSocket,
+                                                               cancellationToken,
+                                                               "FEAT");
+            if (!ftpReply.Success)
             {
-                this._authenticated = false;
-
-                var connected = await controlComplexSocket.ConnectAsync(cancellationToken);
-                if (!connected)
-                {
-                    controlComplexSocket = null;
-                }
-                else
-                {
-                    var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
-                                                                 cancellationToken);
-                    if (!ftpReply.Success)
-                    {
-                        controlComplexSocket = null;
-                    }
-                }
-            }
-            if (controlComplexSocket != null)
-            {
-                if (this._authenticated)
-                {
-                    return controlComplexSocket;
-                }
-
-                var ftpReply = await this.ExecuteWithoutMutexAsync(this._controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   "USER {0}",
-                                                                   this.Username);
-                if (ftpReply.FtpResponseType == FtpResponseType.PositiveIntermediate)
-                {
-                    ftpReply = await this.ExecuteWithoutMutexAsync(this._controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   "PASS {0}",
-                                                                   this.Password);
-                }
-
-                this._authenticated = ftpReply.Success;
-                if (!this._authenticated)
-                {
-                    controlComplexSocket = null;
-                }
+                return FtpFeatures.Unknown;
             }
 
-            this._controlComplexSocket = controlComplexSocket;
+            var messages = ftpReply.Messages;
+            var ftpFeatures = FtpClientHelper.ParseFtpFeatures(messages);
 
-            return controlComplexSocket;
+            return ftpFeatures;
         }
 
         #endregion
