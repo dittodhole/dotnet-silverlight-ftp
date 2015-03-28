@@ -132,7 +132,8 @@ namespace sharpLightFtp
                 }
 
                 string command;
-                var ftpFeatures = await this.GetFtpFeaturesAsync(cancellationToken);
+                var ftpFeatures = await this.GetFtpFeaturesAsync(controlComplexSocket,
+                                                                 cancellationToken);
                 if (ftpFeatures.HasFlag(FtpFeatures.MLSD))
                 {
                     ftpListType = FtpListType.MLSD;
@@ -189,10 +190,22 @@ namespace sharpLightFtp
                         // sending LIST/...
                         // open PASV
                         // reading LIST/... (150 Here comes the directory listing)
-                        ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                       cancellationToken,
-                                                                       transferComplexSocket.ConnectAsync,
-                                                                       command);
+                        var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken,
+                                                                 command);
+                        if (!success)
+                        {
+                            return Enumerable.Empty<FtpListItem>();
+                        }
+
+                        success = await transferComplexSocket.ConnectAsync(cancellationToken);
+                        if (!success)
+                        {
+                            return Enumerable.Empty<FtpListItem>();
+                        }
+
+                        ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken);
                         if (!ftpReply.Success)
                         {
                             return Enumerable.Empty<FtpListItem>();
@@ -216,14 +229,15 @@ namespace sharpLightFtp
                                                                                     StringSplitOptions.RemoveEmptyEntries);
                         }
                     }
-
-                    // reading LIST/... (226 Directory send OK)
-                    var result = await this.ReceiveAndLogSafeAsync(controlComplexSocket,
-                                                                   ftpReply,
-                                                                   cancellationToken);
-                    if (!result)
+                    if (!ftpReply.Completed)
                     {
-                        return Enumerable.Empty<FtpListItem>();
+                        // reading LIST/... (226 Directory send OK)
+                        ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken);
+                        if (!ftpReply.Success)
+                        {
+                            return Enumerable.Empty<FtpListItem>();
+                        }
                     }
                 }
             }
@@ -346,11 +360,23 @@ namespace sharpLightFtp
                     // sending STOR
                     // open transfer socket
                     // reading STOR (150 ...)
-                    ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   transferComplexSocket.ConnectAsync,
-                                                                   "STOR {0}",
-                                                                   ftpFile.FileName);
+                    var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                             cancellationToken,
+                                                             "STOR {0}",
+                                                             ftpFile.FileName);
+                    if (!success)
+                    {
+                        return false;
+                    }
+
+                    success = await transferComplexSocket.ConnectAsync(cancellationToken);
+                    if (!success)
+                    {
+                        return false;
+                    }
+
+                    ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                             cancellationToken);
                     if (!ftpReply.Success)
                     {
                         return false;
@@ -358,17 +384,17 @@ namespace sharpLightFtp
 
                     {
                         // sending transfer socket
-                        var success = await transferComplexSocket.Socket.SendAsync(this.ChunkSendBufferSize,
-                                                                                   controlComplexSocket.GetSocketAsyncEventArgs,
-                                                                                   stream,
-                                                                                   cancellationToken,
-                                                                                   (bytesSent,
-                                                                                    bytesTotal) =>
-                                                                                   {
-                                                                                       var uploadProgressEventArgs = new UploadProgressEventArgs(bytesSent,
-                                                                                                                                                 bytesTotal);
-                                                                                       this.OnUploadProgressAsync(uploadProgressEventArgs);
-                                                                                   });
+                        success = await transferComplexSocket.Socket.SendAsync(this.ChunkSendBufferSize,
+                                                                               controlComplexSocket.GetSocketAsyncEventArgs,
+                                                                               stream,
+                                                                               cancellationToken,
+                                                                               (bytesSent,
+                                                                                bytesTotal) =>
+                                                                               {
+                                                                                   var uploadProgressEventArgs = new UploadProgressEventArgs(bytesSent,
+                                                                                                                                             bytesTotal);
+                                                                                   this.OnUploadProgressAsync(uploadProgressEventArgs);
+                                                                               });
                         if (!success)
                         {
                             return false;
@@ -376,13 +402,15 @@ namespace sharpLightFtp
                     }
                 }
 
-                // reading STOR (226 ...)
-                var result = await this.ReceiveAndLogSafeAsync(controlComplexSocket,
-                                                               ftpReply,
-                                                               cancellationToken);
-                if (!result)
+                if (!ftpReply.Completed)
                 {
-                    return false;
+                    // reading STOR (226 ...)
+                    ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                             cancellationToken);
+                    if (!ftpReply.Success)
+                    {
+                        return false;
+                    }
                 }
             }
 
@@ -442,17 +470,24 @@ namespace sharpLightFtp
                 // sending SIZE
                 // reading SIZE
                 {
-                    var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                       cancellationToken,
-                                                                       "SIZE {0}",
-                                                                       ftpFile.FileName);
+                    var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                             cancellationToken,
+                                                             "SIZE {0}",
+                                                             ftpFile.FileName);
+                    if (!success)
+                    {
+                        return false;
+                    }
+
+                    var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken);
                     if (!ftpReply.Success)
                     {
                         return false;
                     }
 
-                    if (!Int64.TryParse(ftpReply.ResponseMessage,
-                                        out bytesTotal))
+                    if (!long.TryParse(ftpReply.ResponseMessage,
+                                       out bytesTotal))
                     {
                         return false;
                     }
@@ -475,11 +510,23 @@ namespace sharpLightFtp
                         // sending RETR
                         // open transfer socket
                         // reading RETR (150 Opening BINARY mode data connection...)
-                        ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                       cancellationToken,
-                                                                       transferComplexSocket.ConnectAsync,
-                                                                       "RETR {0}",
-                                                                       ftpFile.FileName);
+                        var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken,
+                                                                 "RETR {0}",
+                                                                 ftpFile.FileName);
+                        if (!success)
+                        {
+                            return false;
+                        }
+
+                        success = await transferComplexSocket.ConnectAsync(cancellationToken);
+                        if (!success)
+                        {
+                            return false;
+                        }
+
+                        ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken);
                         if (!ftpReply.Success)
                         {
                             return false;
@@ -510,13 +557,15 @@ namespace sharpLightFtp
                         }
                     }
 
-                    // reading RETR (226 Transfer complete)
-                    var result = await this.ReceiveAndLogSafeAsync(controlComplexSocket,
-                                                                   ftpReply,
-                                                                   cancellationToken);
-                    if (!result)
+                    if (!ftpReply.Completed)
                     {
-                        return false;
+                        // reading RETR (226 Transfer complete)
+                        ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                 cancellationToken);
+                        if (!ftpReply.Success)
+                        {
+                            return false;
+                        }
                     }
                 }
             }
@@ -563,10 +612,17 @@ namespace sharpLightFtp
                     return false;
                 }
 
-                var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   "DELE {0}",
-                                                                   ftpFile.FileName);
+                success = await this.SendAndLogAsync(controlComplexSocket,
+                                                     cancellationToken,
+                                                     "DELE {0}",
+                                                     ftpFile.FileName);
+                if (!success)
+                {
+                    return false;
+                }
+
+                var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                             cancellationToken);
                 if (!ftpReply.Success)
                 {
                     return false;
@@ -615,10 +671,17 @@ namespace sharpLightFtp
                     return false;
                 }
 
-                var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   "RMD {0}",
-                                                                   ftpDirectory.DirectoryName);
+                success = await this.SendAndLogAsync(controlComplexSocket,
+                                                     cancellationToken,
+                                                     "RMD {0}",
+                                                     ftpDirectory.DirectoryName);
+                if (!success)
+                {
+                    return false;
+                }
+
+                var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                             cancellationToken);
                 if (!ftpReply.Success)
                 {
                     return false;
@@ -636,9 +699,16 @@ namespace sharpLightFtp
         private async Task<ComplexSocket> GetPassiveComplexSocketAsync(ComplexSocket controlComplexSocket,
                                                                        CancellationToken cancellationToken)
         {
-            var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                               cancellationToken,
-                                                               "PASV");
+            var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                     cancellationToken,
+                                                     "PASV");
+            if (!success)
+            {
+                return null;
+            }
+
+            var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                         cancellationToken);
             if (!ftpReply.Success)
             {
                 return null;
@@ -676,10 +746,17 @@ namespace sharpLightFtp
                     return FtpReply.Failed;
                 }
 
-                var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   command,
-                                                                   args);
+                var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                         cancellationToken,
+                                                         command,
+                                                         args);
+                if (!success)
+                {
+                    return FtpReply.Failed;
+                }
+
+                var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                             cancellationToken);
                 return ftpReply;
             }
         }
@@ -715,16 +792,35 @@ namespace sharpLightFtp
                     return controlComplexSocket;
                 }
 
-                var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   "USER {0}",
-                                                                   this.Username);
-                if (ftpReply.FtpResponseType == FtpResponseType.PositiveIntermediate)
+                FtpReply ftpReply;
+                var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                         cancellationToken,
+                                                         "USER {0}",
+                                                         this.Username);
+                if (success)
                 {
-                    ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   "PASS {0}",
-                                                                   this.Password);
+                    ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                             cancellationToken);
+                    if (ftpReply.FtpResponseType == FtpResponseType.PositiveIntermediate)
+                    {
+                        success = await this.SendAndLogAsync(controlComplexSocket,
+                                                             cancellationToken,
+                                                             "PASS {0}",
+                                                             this.Password);
+                        if (success)
+                        {
+                            ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                     cancellationToken);
+                        }
+                        else
+                        {
+                            ftpReply = FtpReply.Failed;
+                        }
+                    }
+                }
+                else
+                {
+                    ftpReply = FtpReply.Failed;
                 }
 
                 this._authenticated = ftpReply.Success;
@@ -743,52 +839,6 @@ namespace sharpLightFtp
 
         #region actions
 
-        private async Task<FtpReply> ExecuteWithoutMutexAsync(ComplexSocket controlComplexSocket,
-                                                              CancellationToken cancellationToken,
-                                                              string command,
-                                                              params object[] args)
-        {
-            // TODO mutex in names should DIE!
-            return await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                       cancellationToken,
-                                                       null,
-                                                       command,
-                                                       args);
-        }
-
-        private async Task<FtpReply> ExecuteWithoutMutexAsync(ComplexSocket controlComplexSocket,
-                                                              CancellationToken cancellationToken,
-                                                              Func<CancellationToken, Task<bool>> interimPredicate,
-                                                              string command,
-                                                              params object[] args)
-        {
-            // TODO mutex in names should DIE!
-            {
-                var success = await this.SendAndLogAsync(controlComplexSocket,
-                                                         cancellationToken,
-                                                         command,
-                                                         args);
-                if (!success)
-                {
-                    return FtpReply.Failed;
-                }
-            }
-            if (interimPredicate != null)
-            {
-                var success = await interimPredicate.Invoke(cancellationToken);
-                if (!success)
-                {
-                    return FtpReply.Failed;
-                }
-            }
-            {
-                var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
-                                                             cancellationToken);
-
-                return ftpReply;
-            }
-        }
-
         private async Task<bool> GotoParentDirectoryAsync(ComplexSocket controlComplexSocket,
                                                           FtpFileSystemObject ftpFileSystemObject,
                                                           CancellationToken cancellationToken,
@@ -803,12 +853,17 @@ namespace sharpLightFtp
                 if (string.Equals(directoryChange,
                                   FtpFileSystemObject.ParentChangeCommand))
                 {
-                    var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                       cancellationToken,
-                                                                       "CDUP");
-                    if (ftpReply.Success)
+                    var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                             cancellationToken,
+                                                             "CDUP");
+                    if (success)
                     {
-                        this._currentFtpDirectory = this._currentFtpDirectory.GetParentFtpDirectory();
+                        var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                                     cancellationToken);
+                        if (ftpReply.Success)
+                        {
+                            this._currentFtpDirectory = this._currentFtpDirectory.GetParentFtpDirectory();
+                        }
                     }
                 }
                 else
@@ -831,10 +886,16 @@ namespace sharpLightFtp
                                                              CancellationToken cancellationToken,
                                                              bool createDirectoryIfNotExists = false)
         {
-            var ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                               cancellationToken,
-                                                               "CWD {0}",
-                                                               directory);
+            var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                     cancellationToken,
+                                                     "CWD {0}",
+                                                     directory);
+            if (!success)
+            {
+                return false;
+            }
+            var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                         cancellationToken);
             switch (ftpReply.FtpResponseType)
             {
                 case FtpResponseType.PermanentNegativeCompletion:
@@ -843,12 +904,17 @@ namespace sharpLightFtp
                     {
                         return false;
                     }
-                    ftpReply = await this.ExecuteWithoutMutexAsync(controlComplexSocket,
-                                                                   cancellationToken,
-                                                                   "MKD {0}",
-                                                                   directory);
-                    var success = ftpReply.Success;
+                    success = await this.SendAndLogAsync(controlComplexSocket,
+                                                         cancellationToken,
+                                                         "MKD {0}",
+                                                         directory);
                     if (!success)
+                    {
+                        return false;
+                    }
+                    ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                             cancellationToken);
+                    if (!ftpReply.Success)
                     {
                         return false;
                     }
@@ -863,11 +929,18 @@ namespace sharpLightFtp
             return true;
         }
 
-        private async Task<FtpFeatures> GetFtpFeaturesAsync(CancellationToken cancellationToken)
+        private async Task<FtpFeatures> GetFtpFeaturesAsync(ComplexSocket controlComplexSocket,
+                                                            CancellationToken cancellationToken)
         {
-            var ftpReply = await this.ExecuteWithoutMutexAsync(this._controlComplexSocket,
-                                                               cancellationToken,
-                                                               "FEAT");
+            var success = await this.SendAndLogAsync(controlComplexSocket,
+                                                     cancellationToken,
+                                                     "FEAT");
+            if (!success)
+            {
+                return FtpFeatures.Unknown;
+            }
+            var ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
+                                                         cancellationToken);
             if (!ftpReply.Success)
             {
                 return FtpFeatures.Unknown;
@@ -980,28 +1053,6 @@ namespace sharpLightFtp
             {
                 Thread.Sleep(waitBetweenSendAndReceive);
             }
-        }
-
-        /// <remarks>Sometimes <paramref name="ftpReply" /> has 2 lines or more with different <type name="FtpResponseType" />
-        /// </remarks>
-        private async Task<bool> ReceiveAndLogSafeAsync(ComplexSocket controlComplexSocket,
-                                                        FtpReply ftpReply,
-                                                        CancellationToken cancellationToken)
-        {
-            if (ftpReply.Completed)
-            {
-                return true;
-            }
-
-            ftpReply = await this.ReceiveAndLogAsync(controlComplexSocket,
-                                                     cancellationToken);
-            var success = ftpReply.Success;
-            if (!success)
-            {
-                return false;
-            }
-
-            return true;
         }
 
         /// <remarks>This code does receiving specifically for the <paramref name="controlComplexSocket" /> and does some logging</remarks>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -120,11 +121,10 @@ namespace sharpLightFtp
                     if (!string.IsNullOrWhiteSpace(stringResponseCode))
                     {
                         var firstCharacter = stringResponseCode.First();
-                        var currentCulture = Thread.CurrentThread.CurrentCulture;
-                        var character = firstCharacter.ToString(currentCulture);
-                        var intFtpResponseType = Int32.Parse(character);
+                        var character = firstCharacter.ToString(CultureInfo.InvariantCulture);
+                        var intFtpResponseType = int.Parse(character);
                         ftpResponseType = (FtpResponseType) intFtpResponseType;
-                        responseCode = Int32.Parse(stringResponseCode);
+                        responseCode = int.Parse(stringResponseCode);
                     }
                 }
                 messages.Add(line);
