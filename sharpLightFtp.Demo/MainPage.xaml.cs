@@ -32,6 +32,7 @@ namespace sharpLightFtp.Demo
             {
                 using (ftpClient)
                 {
+                    ftpClient.WaitBeforeReceiveTimeSpan = TimeSpan.FromMilliseconds(200d);
                     try
                     {
                         var ftpListItems = ftpClient.GetListing(path)
