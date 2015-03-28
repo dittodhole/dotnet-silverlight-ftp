@@ -6,65 +6,77 @@
              mc:Ignorable="d"
              d:DesignHeight="300"
              d:DesignWidth="400">
-	<StackPanel>
-		<Grid x:Name="LayoutRoot"
-		      Background="White"
-		      Height="150"
-		      VerticalAlignment="Top">
-			<Grid.RowDefinitions>
-				<RowDefinition Height="1*"/>
-				<RowDefinition Height="1*"/>
-				<RowDefinition Height="1*"/>
-				<RowDefinition Height="1*"/>
-			</Grid.RowDefinitions>
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="1*"/>
-				<ColumnDefinition Width="2*"/>
-			</Grid.ColumnDefinitions>
-			<TextBlock Grid.Row="0"
-			           Grid.Column="0"
-			           HorizontalAlignment="Right"
-			           VerticalAlignment="Center"
-			           Text="Server"/>
-			<TextBox x:Name="tbServer"
-			         Grid.Row="0"
-			         Grid.Column="1"
-			         VerticalAlignment="Center"
-			         Text="ftp.mozilla.org"/>
-			<TextBlock Grid.Row="1"
-			           Grid.Column="0"
-			           HorizontalAlignment="Right"
-			           VerticalAlignment="Center"
-			           Text="Port"/>
-			<TextBox x:Name="tbPort"
-			         Grid.Row="1"
-			         Grid.Column="1"
-			         VerticalAlignment="Center"
-			         Text="21"/>
-			<TextBlock Grid.Row="2"
-			           Grid.Column="0"
-			           HorizontalAlignment="Right"
-			           VerticalAlignment="Center"
-			           Text="Username"/>
-			<TextBox x:Name="tbUsername"
-			         Grid.Row="2"
-			         Grid.Column="1"
-			         VerticalAlignment="Center"
-			         Text="anonymous"/>
-			<TextBlock Grid.Row="3"
-			           Grid.Column="0"
-			           HorizontalAlignment="Right"
-			           VerticalAlignment="Center"
-			           Text="Password"/>
-			<TextBox x:Name="tbPassword"
-			         Grid.Row="3"
-			         Grid.Column="1"
-			         VerticalAlignment="Center"/>
-		</Grid>
-		<Button Width="100"
-		        Height="25"
-		        Margin="10"
-		        Content="Do Stuff"
-		        Click="DoStuff"/>
-	</StackPanel>
+    <StackPanel>
+        <Grid x:Name="LayoutRoot"
+              Background="White"
+              Height="150"
+              VerticalAlignment="Top">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="1*"/>
+                <RowDefinition Height="1*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Row="0"
+                       Grid.Column="0"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Text="Server"/>
+            <TextBox x:Name="tbServer"
+                     Grid.Row="0"
+                     Grid.Column="1"
+                     VerticalAlignment="Center"
+                     Text="ftp.microsoft.com"/>
+            <TextBlock Grid.Row="1"
+                       Grid.Column="0"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Text="Port"/>
+            <TextBox x:Name="tbPort"
+                     Grid.Row="1"
+                     Grid.Column="1"
+                     VerticalAlignment="Center"
+                     Text="21"/>
+            <TextBlock Grid.Row="2"
+                       Grid.Column="0"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Text="Username"/>
+            <TextBox x:Name="tbUsername"
+                     Grid.Row="2"
+                     Grid.Column="1"
+                     VerticalAlignment="Center"
+                     Text="anonymous"/>
+            <TextBlock Grid.Row="3"
+                       Grid.Column="0"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Text="Password"/>
+            <TextBox x:Name="tbPassword"
+                     Grid.Row="3"
+                     Grid.Column="1"
+                     VerticalAlignment="Center"
+                     Text="foo@bar.com"/>
+            <TextBlock Grid.Row="4"
+                       Grid.Column="0"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Text="Path"/>
+            <TextBox x:Name="tbPath"
+                     Grid.Row="4"
+                     Grid.Column="1"
+                     VerticalAlignment="Center"
+                     Text="/"/>
+        </Grid>
+        <Button Width="100"
+                Height="25"
+                Margin="10"
+                Content="Do Stuff"
+                Click="DoStuff"/>
+    </StackPanel>
 </UserControl>

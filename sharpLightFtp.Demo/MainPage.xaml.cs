@@ -20,26 +20,33 @@ namespace sharpLightFtp.Demo
         private void DoStuff(object sender,
                              RoutedEventArgs e)
         {
-            this.GetListingAsync();
+            this.GetListingAsync(this.tbPath.Text);
             //this.DownloadAsync();
             //this.UploadAsync();
         }
 
-        private void GetListingAsync()
+        private void GetListingAsync(string path)
         {
             var ftpClient = this.GetFtpClient();
             Task.Factory.StartNew(() =>
             {
                 using (ftpClient)
                 {
-                    //var ftpListItems = ftpClient.GetListing("/pub/addons");
-                    var ftpListItems = ftpClient.GetListing("/");
-                    this.Dispatcher.BeginInvoke(() =>
+                    try
                     {
-                        var messageBoxText = string.Format("success: {0}",
-                                                           ftpListItems.Count());
-                        MessageBox.Show(messageBoxText);
-                    });
+                        var ftpListItems = ftpClient.GetListing(path)
+                                                    .ToArray();
+                        this.Dispatcher.BeginInvoke(() =>
+                        {
+                            var messageBoxText = string.Format("success: {0}",
+                                                               ftpListItems.Count());
+                            MessageBox.Show(messageBoxText);
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        this.Dispatcher.BeginInvoke(() => MessageBox.Show(ex.ToString()));
+                    }
                 }
             });
         }
