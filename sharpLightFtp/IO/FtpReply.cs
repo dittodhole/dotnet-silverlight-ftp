@@ -11,6 +11,7 @@ namespace sharpLightFtp.IO
                                                                 Enumerable.Empty<string>(),
                                                                 null);
 
+        public static string RegularExpressionForParsing = @"^(\d{3})[\s\-](.*)$";
         private readonly string _data;
         private readonly FtpResponseType _ftpResponseType;
         private readonly List<string> _messages = new List<string>();

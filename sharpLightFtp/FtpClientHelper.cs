@@ -106,7 +106,7 @@ namespace sharpLightFtp
             foreach (var line in lines)
             {
                 var match = Regex.Match(line,
-                                        @"^(\d{3})\s(.*)$");
+                                        FtpReply.RegularExpressionForParsing);
                 if (match.Success)
                 {
                     if (match.Groups.Count > 1)
